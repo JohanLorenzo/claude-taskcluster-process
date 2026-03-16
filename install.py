@@ -432,25 +432,32 @@ def _preview_changes(plan):
         _print_symlink_ops(plan.symlink_ops)
 
 
-def _apply_changes(plan):
+def _write_files(plan):
     if plan.local_config_diff:
         LOCAL_CONFIG_FILE.write_text(plan.new_local_content)
         print(f"Updated: {LOCAL_CONFIG_FILE}")
     SETTINGS_FILE.write_text(json.dumps(plan.new_settings, indent=2) + "\n")
     print(f"Updated: {SETTINGS_FILE}")
+
+
+def _apply_symlink_op(op):
+    kind, src, target = op[0], op[1], op[2]
+    if target.is_symlink() or target.exists():
+        target.unlink()
+    target.symlink_to(src)
+    verb = "Replaced" if kind == "replace_file" else "Linked"
+    print(f"{verb}: {target} → {src}")
+
+
+def _apply_symlinks(ops):
     RULES_DIR.mkdir(exist_ok=True)
-    for op in plan.actionable_ops:
-        if op[0] in ("create", "update"):
-            src, target = op[1], op[2]
-            if target.is_symlink() or target.exists():
-                target.unlink()
-            target.symlink_to(src)
-            print(f"Linked: {target} → {src}")
-        elif op[0] == "replace_file":
-            src, target = op[1], op[2]
-            target.unlink()
-            target.symlink_to(src)
-            print(f"Replaced: {target} → {src}")
+    for op in ops:
+        _apply_symlink_op(op)
+
+
+def _apply_changes(plan):
+    _write_files(plan)
+    _apply_symlinks(plan.actionable_ops)
     print("\nDone.")
     if (
         subprocess.run(
