@@ -8,7 +8,7 @@ import sys
 logger = logging.getLogger(__name__)
 
 
-def check(tool_input, cwd=None):
+def check(tool_input):
     command = tool_input.get("command", "")
     if "git commit" in command and "--no-verify" in command:
         return False, "Do not use --no-verify. Fix the underlying hook issue instead."
@@ -19,8 +19,7 @@ def main():
     logging.basicConfig(format="%(message)s")
     data = json.load(sys.stdin)
     tool_input = data.get("tool_input", {})
-    cwd = data.get("cwd")
-    allowed, reason = check(tool_input, cwd=cwd)
+    allowed, reason = check(tool_input)
     if not allowed:
         logger.error("BLOCKED: %s", reason)
         sys.exit(2)

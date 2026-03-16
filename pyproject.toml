@@ -33,6 +33,3 @@ ignore = [
   "S101",   # assert — standard in tests
   "S108",   # /tmp in tests is a mock value, not a real temp file
 ]
-"hooks/**" = [
-  "ARG001", # cwd=None is required by the hook interface even when unused
-]
