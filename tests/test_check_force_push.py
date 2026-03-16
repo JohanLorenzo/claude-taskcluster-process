@@ -1,7 +1,7 @@
 from unittest.mock import patch
 
 from hooks.check_force_push import check
-from tests.conftest import make_run
+from tests.helpers import make_run
 
 
 def _mock_force_push(base_branch, is_ancestor):

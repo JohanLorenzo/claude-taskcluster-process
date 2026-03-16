@@ -1,7 +1,7 @@
 from unittest.mock import patch
 
 from hooks.check_push_target import check
-from tests.conftest import make_run
+from tests.helpers import make_run
 
 
 def _mock_run_factory(remote_url, is_fork_str):
