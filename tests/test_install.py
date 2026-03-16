@@ -340,6 +340,134 @@ def test_check_tools_optional_missing_continues(capsys):
 
 
 # ---------------------------------------------------------------------------
+# _get_search_root
+# ---------------------------------------------------------------------------
+
+
+def test_get_search_root_valid_dir(tmp_path):
+    with patch("builtins.input", return_value=str(tmp_path)):
+        assert inst._get_search_root() == tmp_path
+
+
+def test_get_search_root_tilde_expansion(tmp_path):
+    home = Path.home()
+    with patch("builtins.input", return_value="~"):
+        result = inst._get_search_root()
+    assert result == home
+
+
+def test_get_search_root_not_a_dir_exits(tmp_path):
+    not_a_dir = tmp_path / "file.txt"
+    not_a_dir.write_text("x")
+    with (
+        patch("builtins.input", return_value=str(not_a_dir)),
+        pytest.raises(SystemExit),
+    ):
+        inst._get_search_root()
+
+
+# ---------------------------------------------------------------------------
+# _find_repo_candidates
+# ---------------------------------------------------------------------------
+
+
+def test_find_repo_candidates_finds_taskgraph_via_pyproject(tmp_path):
+    tg = tmp_path / "taskgraph"
+    tg.mkdir()
+    (tg / "pyproject.toml").write_text('[project]\nname = "taskgraph"\n')
+    taskgraph, fxci = inst._find_repo_candidates(tmp_path)
+    assert tg in taskgraph
+    assert fxci == []
+
+
+def test_find_repo_candidates_finds_taskgraph_via_init(tmp_path):
+    tg = tmp_path / "taskgraph"
+    pkg = tg / "taskgraph"
+    pkg.mkdir(parents=True)
+    (pkg / "__init__.py").write_text("")
+    taskgraph, _ = inst._find_repo_candidates(tmp_path)
+    assert tg in taskgraph
+
+
+def test_find_repo_candidates_handles_src_layout(tmp_path):
+    tg = tmp_path / "taskgraph"
+    src = tg / "src"
+    src.mkdir(parents=True)
+    (tg / ".git").mkdir()
+    (src / "pyproject.toml").write_text('[project]\nname = "taskgraph"\n')
+    taskgraph, _ = inst._find_repo_candidates(tmp_path)
+    assert tg in taskgraph
+    assert src not in taskgraph
+
+
+def test_find_repo_candidates_finds_fxci_config(tmp_path):
+    fxci = tmp_path / "fxci-config"
+    fxci.mkdir()
+    (fxci / "pyproject.toml").write_text('[project]\nname = "fxci-config"\n')
+    _, fxci_candidates = inst._find_repo_candidates(tmp_path)
+    assert fxci in fxci_candidates
+
+
+def test_find_repo_candidates_skips_unreadable_pyproject(tmp_path):
+    bad = tmp_path / "bad"
+    bad.mkdir()
+    pyproject = bad / "pyproject.toml"
+    pyproject.write_text("")
+    pyproject.chmod(0o000)
+    try:
+        taskgraph, fxci = inst._find_repo_candidates(tmp_path)
+        assert taskgraph == []
+        assert fxci == []
+    finally:
+        pyproject.chmod(0o644)
+
+
+def test_find_repo_candidates_no_duplicates(tmp_path):
+    tg = tmp_path / "taskgraph"
+    src = tg / "src"
+    src.mkdir(parents=True)
+    (tg / ".git").mkdir()
+    (src / "pyproject.toml").write_text('[project]\nname = "taskgraph"\n')
+    pkg = src / "taskgraph"
+    pkg.mkdir()
+    (pkg / "__init__.py").write_text("")
+    taskgraph, _ = inst._find_repo_candidates(tmp_path)
+    assert taskgraph.count(tg) == 1
+
+
+# ---------------------------------------------------------------------------
+# _render_local_config
+# ---------------------------------------------------------------------------
+
+
+def test_render_local_config_without_fxci(tmp_path):
+    repos = [{"name": "taskcluster/taskgraph", "path": "/tg"}]
+    content = inst._render_local_config(Path("/tg"), None, repos)
+    assert "taskgraph_repo: /tg" in content
+    assert "fxci_config_repo" not in content
+    assert "taskcluster/taskgraph" in content
+
+
+def test_render_local_config_with_fxci(tmp_path):
+    repos = [
+        {"name": "taskcluster/taskgraph", "path": "/tg"},
+        {"name": "mozilla-releng/fxci-config", "path": "/fxci"},
+    ]
+    content = inst._render_local_config(Path("/tg"), Path("/fxci"), repos)
+    assert "fxci_config_repo: /fxci" in content
+    assert "mozilla-releng/fxci-config" in content
+
+
+def test_render_local_config_structure(tmp_path):
+    repos = [{"name": "org/repo", "path": "/p"}]
+    content = inst._render_local_config(Path("/tg"), None, repos)
+    assert content.startswith("# Local configuration — DO NOT COMMIT")
+    assert "## Required paths" in content
+    assert "## Tracked repositories" in content
+    assert "repos:" in content
+
+
+# ---------------------------------------------------------------------------
 # _pick_repo
 # ---------------------------------------------------------------------------
 

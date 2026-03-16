@@ -246,15 +246,16 @@ def _pick_repo(candidates, label, *, required):
     return candidates[int(input("Pick one (number): ").strip()) - 1]
 
 
-def _generate_local_config():
-    print("\n--- CLAUDE.local.md setup ---")
+def _get_search_root():
     root_input = input("Enter root path to search for repos (e.g., ~/git): ").strip()
     root = Path(root_input).expanduser().resolve()
     if not root.is_dir():
         print(f"ERROR: {root} is not a directory.", file=sys.stderr)
         sys.exit(1)
+    return root
 
-    print(f"\nSearching for repos under {root}...")
+
+def _find_repo_candidates(root):
     taskgraph_candidates = []
     fxci_candidates = []
     for pyproject in _find_files(root, "pyproject.toml"):
@@ -274,24 +275,33 @@ def _generate_local_config():
         candidate = _repo_root(init.parent.parent)
         if candidate not in taskgraph_candidates:
             taskgraph_candidates.append(candidate)
+    return taskgraph_candidates, fxci_candidates
 
-    taskgraph_repo = _pick_repo(taskgraph_candidates, "taskgraph", required=True)
-    fxci_config_repo = _pick_repo(fxci_candidates, "fxci-config", required=False)
 
-    repos = [{"name": "taskcluster/taskgraph", "path": str(taskgraph_repo)}]
-    if fxci_config_repo:
-        repos.extend(_discover_tracked_repos(fxci_config_repo, root))
-
+def _render_local_config(taskgraph_repo, fxci_config_repo, repos):
     fxci_line = f"fxci_config_repo: {fxci_config_repo}\n" if fxci_config_repo else ""
     repo_lines = "".join(
         f"  - name: {r['name']}\n    path: {r['path']}\n" for r in repos
     )
-    content = (
+    return (
         "# Local configuration — DO NOT COMMIT\n\n"
         f"## Required paths\ntaskgraph_repo: {taskgraph_repo}\n"
         f"{fxci_line}"
         f"\n## Tracked repositories\nrepos:\n{repo_lines}"
     )
+
+
+def _generate_local_config():
+    print("\n--- CLAUDE.local.md setup ---")
+    root = _get_search_root()
+    print(f"\nSearching for repos under {root}...")
+    taskgraph_candidates, fxci_candidates = _find_repo_candidates(root)
+    taskgraph_repo = _pick_repo(taskgraph_candidates, "taskgraph", required=True)
+    fxci_config_repo = _pick_repo(fxci_candidates, "fxci-config", required=False)
+    repos = [{"name": "taskcluster/taskgraph", "path": str(taskgraph_repo)}]
+    if fxci_config_repo:
+        repos.extend(_discover_tracked_repos(fxci_config_repo, root))
+    content = _render_local_config(taskgraph_repo, fxci_config_repo, repos)
     print("\n--- Generated CLAUDE.local.md ---")
     print(content)
     if input("Write CLAUDE.local.md? [y/N]: ").strip().lower() != "y":
