@@ -89,17 +89,18 @@ def parse_github_slugs(fxci_config_repo):
 
 def discover_tracked_repos(fxci_config_repo, search_root):
     slugs = parse_github_slugs(fxci_config_repo)
-    repos = []
-    for slug in sorted(slugs):
-        org, name = slug.split("/", 1)
-        for dirpath, dirnames, _ in os.walk(search_root):
-            dirnames[:] = [
-                d for d in dirnames if d not in _SKIP_DIRS and not d.startswith(".")
-            ]
-            if Path(dirpath).name == org and name in dirnames:
-                repos.append({"name": slug, "path": str(Path(dirpath) / name)})
-                break
-    return repos
+    slug_map = {tuple(slug.split("/", 1)): slug for slug in slugs}
+    found = {}
+    for dirpath, dirnames, _ in os.walk(search_root):
+        dirnames[:] = [
+            d for d in dirnames if d not in _SKIP_DIRS and not d.startswith(".")
+        ]
+        parent = Path(dirpath).name
+        for child in dirnames:
+            slug = slug_map.get((parent, child))
+            if slug and slug not in found:
+                found[slug] = str(Path(dirpath) / child)
+    return [{"name": slug, "path": path} for slug, path in sorted(found.items())]
 
 
 def build_repos_list(taskgraph_repo, fxci_config_repo, search_root):
