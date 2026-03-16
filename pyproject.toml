@@ -22,7 +22,6 @@ ignore = [
   "ANN",    # type annotations — not required here
   "COM",    # trailing commas — handled by ruff format
   "CPY",    # copyright headers
-  "ARG001", # unused function args — required by hook/mock interfaces
   "S603",   # subprocess with trusted input
   "S607",   # partial executable path — intentional (git, gh, cargo on PATH)
   "ERA001", # section header comments look like commented-out code
@@ -30,6 +29,10 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = [
-  "S101", # assert — standard in tests
-  "S108", # /tmp in tests is a mock value, not a real temp file
+  "ARG001", # unused args in mock side_effects and patch targets
+  "S101",   # assert — standard in tests
+  "S108",   # /tmp in tests is a mock value, not a real temp file
+]
+"hooks/**" = [
+  "ARG001", # cwd=None is required by the hook interface even when unused
 ]
