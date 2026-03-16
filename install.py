@@ -371,8 +371,12 @@ def main():
         print("\n--- rules/ symlinks ---")
         _print_symlink_ops(symlink_ops)
 
-    answer = input("\nApply changes? [y/N]: ").strip().lower()
-    if answer != "y":
+    actionable_ops = [op for op in symlink_ops if op[0] != "noop"]
+    if not diff and not actionable_ops:
+        print("\nAlready up to date.")
+        sys.exit(0)
+
+    if input("\nApply changes? [y/N]: ").strip().lower() != "y":
         print("No changes made.")
         sys.exit(0)
 
@@ -380,7 +384,7 @@ def main():
     print(f"Updated: {SETTINGS_FILE}")
 
     RULES_DIR.mkdir(exist_ok=True)
-    for op in symlink_ops:
+    for op in actionable_ops:
         if op[0] in ("create", "update"):
             src, target = op[1], op[2]
             if target.is_symlink() or target.exists():

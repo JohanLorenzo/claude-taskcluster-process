@@ -251,6 +251,41 @@ def test_symlink_ops_replace_regular_file(tmp_path):
 
 
 # ---------------------------------------------------------------------------
+# already up to date
+# ---------------------------------------------------------------------------
+
+
+def test_main_exits_without_prompt_when_no_changes(tmp_path, capsys):
+    hooks_cfg = tmp_path / "hooks-config.json"
+    _write_json(hooks_cfg, {"PreToolUse": [], "PostToolUse": []})
+    # Settings already match what install.py would compute — no diff expected
+    settings_file = _make_settings(
+        tmp_path, extra={"hooks": {"PreToolUse": [], "PostToolUse": []}}
+    )
+    local_config = tmp_path / "CLAUDE.local.md"
+    local_config.write_text("taskgraph_repo: /tg\n")
+    rules_src = tmp_path / "rules"
+    rules_src.mkdir()
+    rules_target = tmp_path / "claude_rules"
+    rules_target.mkdir()
+
+    with (
+        patch.object(inst, "SETTINGS_FILE", settings_file),
+        patch.object(inst, "HOOKS_CONFIG_FILE", hooks_cfg),
+        patch.object(inst, "LOCAL_CONFIG_FILE", local_config),
+        patch.object(inst, "REPO_ROOT", tmp_path),
+        patch.object(inst, "RULES_DIR", rules_target),
+        patch.object(inst, "CLAUDE_DIR", tmp_path),
+        patch("builtins.input", side_effect=AssertionError("should not prompt")),
+        pytest.raises(SystemExit) as exc,
+    ):
+        inst.main()
+
+    assert exc.value.code == 0
+    assert "up to date" in capsys.readouterr().out
+
+
+# ---------------------------------------------------------------------------
 # _check_preflight_warnings
 # ---------------------------------------------------------------------------
 
