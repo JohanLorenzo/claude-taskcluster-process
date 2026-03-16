@@ -1,20 +1,14 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from hooks.check_push_target import check
-
-
-def _make_run(returncode, stdout):
-    r = MagicMock()
-    r.returncode = returncode
-    r.stdout = stdout
-    return r
+from tests.conftest import make_run
 
 
 def _mock_run_factory(remote_url, is_fork_str):
     def side_effect(cmd, **kwargs):
         if "get-url" in cmd:
-            return _make_run(0, remote_url + "\n")
-        return _make_run(0, is_fork_str + "\n")
+            return make_run(0, remote_url + "\n")
+        return make_run(0, is_fork_str + "\n")
 
     return side_effect
 

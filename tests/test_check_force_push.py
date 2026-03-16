@@ -1,22 +1,16 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from hooks.check_force_push import check
-
-
-def _make_run(returncode, stdout=""):
-    r = MagicMock()
-    r.returncode = returncode
-    r.stdout = stdout
-    return r
+from tests.conftest import make_run
 
 
 def _mock_force_push(base_branch, is_ancestor):
     def side_effect(cmd, **kwargs):
         if "pr" in cmd and "view" in cmd:
-            return _make_run(0, base_branch + "\n")
+            return make_run(0, base_branch + "\n")
         if "merge-base" in cmd:
-            return _make_run(0 if is_ancestor else 1)
-        return _make_run(0)
+            return make_run(0 if is_ancestor else 1)
+        return make_run(0)
 
     return side_effect
 

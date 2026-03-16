@@ -88,9 +88,7 @@ def _read_local_config_repos():
                 in_repos = True
                 continue
             if in_repos:
-                if stripped.startswith("- ") or stripped.startswith("-\t"):
-                    pass
-                elif stripped.startswith("path:"):
+                if stripped.startswith("path:"):
                     repos.append(stripped[len("path:") :].strip())
                 elif (
                     stripped
@@ -129,12 +127,13 @@ def _compute_symlink_ops():
     ops = []
     rules_src_dir = REPO_ROOT / "rules"
     for src in sorted(rules_src_dir.glob("*.md")):
+        src_resolved = src.resolve()
         target = RULES_DIR / src.name
         if not target.exists() and not target.is_symlink():
             ops.append(("create", src, target))
         elif target.is_symlink():
             current = Path(os.readlink(target))
-            if current.resolve() == src.resolve():
+            if current.resolve() == src_resolved:
                 ops.append(("noop", src, target))
             else:
                 ops.append(("update", src, target, current))
@@ -235,19 +234,24 @@ def _generate_local_config():
         print(f"ERROR: {root} is not a directory.", file=sys.stderr)
         sys.exit(1)
 
-    print(f"\nSearching for taskgraph repo under {root}...")
+    print(f"\nSearching for repos under {root}...")
     taskgraph_candidates = []
+    fxci_candidates = []
     for pyproject in _find_files(root, "pyproject.toml"):
         try:
             text = pyproject.read_text()
-            if 'name = "taskgraph"' in text or "name = 'taskgraph'" in text:
-                candidate = pyproject.parent
-                if candidate.name == "src" and (candidate.parent / ".git").is_dir():
-                    candidate = candidate.parent
-                if candidate not in taskgraph_candidates:
-                    taskgraph_candidates.append(candidate)
         except OSError:
-            pass
+            continue
+        if 'name = "taskgraph"' in text or "name = 'taskgraph'" in text:
+            candidate = pyproject.parent
+            if candidate.name == "src" and (candidate.parent / ".git").is_dir():
+                candidate = candidate.parent
+            if candidate not in taskgraph_candidates:
+                taskgraph_candidates.append(candidate)
+        if 'name = "fxci-config"' in text or "name = 'fxci-config'" in text:
+            candidate = pyproject.parent
+            if candidate not in fxci_candidates:
+                fxci_candidates.append(candidate)
     for init in _find_files(root, "taskgraph/__init__.py"):
         candidate = init.parent.parent
         if candidate.name == "src" and (candidate.parent / ".git").is_dir():
@@ -268,18 +272,6 @@ def _generate_local_config():
             print(f"  {i + 1}. {c}")
         choice = input("Pick one (number): ").strip()
         taskgraph_repo = taskgraph_candidates[int(choice) - 1]
-
-    print(f"\nSearching for fxci-config repo under {root}...")
-    fxci_candidates = []
-    for pyproject in _find_files(root, "pyproject.toml"):
-        try:
-            text = pyproject.read_text()
-            if 'name = "fxci-config"' in text or "name = 'fxci-config'" in text:
-                candidate = pyproject.parent
-                if candidate not in fxci_candidates:
-                    fxci_candidates.append(candidate)
-        except OSError:
-            pass
 
     fxci_config_repo = None
     if not fxci_candidates:
