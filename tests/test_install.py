@@ -82,7 +82,7 @@ def test_unified_diff_empty_when_identical():
 
 
 # ---------------------------------------------------------------------------
-# _parse_local_config / _parse_local_config_content
+# _parse_local_config_content
 # ---------------------------------------------------------------------------
 
 _LOCAL_CONFIG_CONTENT = """\
@@ -101,33 +101,29 @@ repos:
 """
 
 
-def test_parse_local_config_reads_required_paths(tmp_path):
-    config_file = tmp_path / "CLAUDE.local.md"
-    config_file.write_text(_LOCAL_CONFIG_CONTENT)
-    result = inst._parse_local_config(config_file)
+def test_parse_local_config_content_reads_required_paths():
+    result = inst._parse_local_config_content(_LOCAL_CONFIG_CONTENT)
     assert result["taskgraph_repo"] == Path("/tg/taskcluster/taskgraph")
     assert result["fxci_config_repo"] == Path("/tg/mozilla-releng/fxci-config")
 
 
-def test_parse_local_config_reads_repo_paths(tmp_path):
-    config_file = tmp_path / "CLAUDE.local.md"
-    config_file.write_text(_LOCAL_CONFIG_CONTENT)
-    result = inst._parse_local_config(config_file)
+def test_parse_local_config_content_reads_repo_paths():
+    result = inst._parse_local_config_content(_LOCAL_CONFIG_CONTENT)
     assert "/tg/taskcluster/taskgraph" in result["repo_paths"]
     assert "/tg/mozilla-releng/fxci-config" in result["repo_paths"]
 
 
-def test_parse_local_config_missing_file_returns_empty(tmp_path):
-    result = inst._parse_local_config(tmp_path / "missing.md")
+def test_parse_local_config_content_empty_string_returns_empty():
+    result = inst._parse_local_config_content("")
     assert result["taskgraph_repo"] is None
     assert result["fxci_config_repo"] is None
     assert result["repo_paths"] == []
 
 
-def test_parse_local_config_no_fxci_config(tmp_path):
-    config_file = tmp_path / "CLAUDE.local.md"
-    config_file.write_text("taskgraph_repo: /tg/taskcluster/taskgraph\n")
-    result = inst._parse_local_config(config_file)
+def test_parse_local_config_content_no_fxci_config():
+    result = inst._parse_local_config_content(
+        "taskgraph_repo: /tg/taskcluster/taskgraph\n"
+    )
     assert result["taskgraph_repo"] == Path("/tg/taskcluster/taskgraph")
     assert result["fxci_config_repo"] is None
 

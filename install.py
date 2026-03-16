@@ -114,12 +114,6 @@ def _parse_local_config_content(text):
     return result
 
 
-def _parse_local_config(path):
-    if not path.exists():
-        return {"taskgraph_repo": None, "fxci_config_repo": None, "repo_paths": []}
-    return _parse_local_config_content(path.read_text())
-
-
 def _build_repos_list(taskgraph_repo, fxci_config_repo, search_root):
     tg_slug = "/".join(taskgraph_repo.parts[-2:])
     repos = [{"name": tg_slug, "path": str(taskgraph_repo)}]
