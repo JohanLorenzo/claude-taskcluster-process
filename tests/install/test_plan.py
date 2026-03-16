@@ -36,11 +36,6 @@ def _make_settings(tmp_path, extra=None):
     return settings_file
 
 
-# ---------------------------------------------------------------------------
-# _Plan
-# ---------------------------------------------------------------------------
-
-
 def test_plan_has_changes_true_when_diff():
     plan = Plan(
         local_config_diff=["-old\n", "+new\n"],
@@ -80,11 +75,6 @@ def test_plan_has_changes_true_when_actionable_ops(tmp_path):
     assert plan.has_changes
 
 
-# ---------------------------------------------------------------------------
-# _preview_changes
-# ---------------------------------------------------------------------------
-
-
 def test_preview_changes_prints_no_change_when_up_to_date(caplog, tmp_path):
 
     plan = Plan(
@@ -122,11 +112,6 @@ def test_preview_changes_prints_warnings(caplog, tmp_path):
     ):
         install_plan.preview_changes(plan)
     assert "WARNING: something" in caplog.text
-
-
-# ---------------------------------------------------------------------------
-# _write_files
-# ---------------------------------------------------------------------------
 
 
 def test_write_files_writes_settings(tmp_path):
@@ -183,11 +168,6 @@ def test_write_files_skips_local_config_when_no_diff(tmp_path):
     assert not local_config_file.exists()
 
 
-# ---------------------------------------------------------------------------
-# _apply_symlink_op
-# ---------------------------------------------------------------------------
-
-
 def test_apply_symlink_op_create(tmp_path):
     src = tmp_path / "src.md"
     src.write_text("x")
@@ -218,11 +198,6 @@ def test_apply_symlink_op_replace_file(tmp_path):
     assert target.resolve() == src.resolve()
 
 
-# ---------------------------------------------------------------------------
-# _apply_changes (integration)
-# ---------------------------------------------------------------------------
-
-
 def test_apply_changes_orchestrates_all_steps(tmp_path):
     settings_file = _make_settings(tmp_path)
     md = tmp_path / "rules" / "foo.md"
@@ -246,11 +221,6 @@ def test_apply_changes_orchestrates_all_steps(tmp_path):
         install_plan.apply_changes(plan)
     assert json.loads(settings_file.read_text()) == {"model": "updated"}
     assert link.is_symlink()
-
-
-# ---------------------------------------------------------------------------
-# CLI tool checks
-# ---------------------------------------------------------------------------
 
 
 def test_check_tools_all_present():
@@ -277,11 +247,6 @@ def test_check_tools_optional_missing_continues(caplog):
         check_tools()
 
     assert "cargo" in caplog.text
-
-
-# ---------------------------------------------------------------------------
-# test_main_exits_without_prompt_when_no_changes
-# ---------------------------------------------------------------------------
 
 
 def test_main_exits_without_prompt_when_no_changes(tmp_path, caplog):

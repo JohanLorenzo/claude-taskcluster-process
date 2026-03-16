@@ -31,11 +31,6 @@ def _make_settings(tmp_path, extra=None):
     return settings_file
 
 
-# ---------------------------------------------------------------------------
-# _load_hooks_config: path resolution
-# ---------------------------------------------------------------------------
-
-
 def test_hooks_config_resolves_relative_paths(tmp_path):
     config = {
         "PreToolUse": [
@@ -58,11 +53,6 @@ def test_hooks_config_resolves_relative_paths(tmp_path):
     assert cmd == str(tmp_path / "hooks" / "block_no_verify.py")
 
 
-# ---------------------------------------------------------------------------
-# _load_settings
-# ---------------------------------------------------------------------------
-
-
 def test_load_settings_missing_exits(tmp_path):
     missing = tmp_path / "settings.json"
     with patch.object(settings, "SETTINGS_FILE", missing), pytest.raises(SystemExit):
@@ -81,11 +71,6 @@ def test_load_settings_valid(tmp_path):
     with patch.object(settings, "SETTINGS_FILE", settings_file):
         data = settings.load_settings()
     assert data["model"] == "opusplan"
-
-
-# ---------------------------------------------------------------------------
-# _compute_new_settings: hooks replacement + key preservation
-# ---------------------------------------------------------------------------
 
 
 def test_new_settings_replaces_hooks_only(tmp_path):
@@ -134,11 +119,6 @@ def test_new_settings_preserves_other_permissions_keys(tmp_path):
     assert new["permissions"]["deny"] == ["Bash(rm:*)"]
     assert new["permissions"]["defaultMode"] == "plan"
     assert new["permissions"]["additionalDirectories"] == ["/p"]
-
-
-# ---------------------------------------------------------------------------
-# _settings_diff
-# ---------------------------------------------------------------------------
 
 
 def test_settings_diff_shows_unified_diff(tmp_path):

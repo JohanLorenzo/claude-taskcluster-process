@@ -2,10 +2,6 @@ from unittest.mock import patch
 
 from install import symlinks
 
-# ---------------------------------------------------------------------------
-# _compute_symlink_ops
-# ---------------------------------------------------------------------------
-
 
 def test_symlink_ops_new_symlink(tmp_path):
     rules_src = tmp_path / "rules"
@@ -84,11 +80,6 @@ def test_symlink_ops_replace_regular_file(tmp_path):
     assert ops[0][0] == "replace_file"
 
 
-# ---------------------------------------------------------------------------
-# _replace_file_warnings
-# ---------------------------------------------------------------------------
-
-
 def test_replace_file_warnings_returns_warning_per_op(tmp_path):
     src = tmp_path / "src.md"
     target = tmp_path / "target.md"
@@ -106,11 +97,6 @@ def test_replace_file_warnings_empty_for_other_ops(tmp_path):
     assert symlinks.replace_file_warnings([("noop", src, target)]) == []
 
 
-# ---------------------------------------------------------------------------
-# _stale_symlink_warnings
-# ---------------------------------------------------------------------------
-
-
 def test_stale_symlink_warnings_detects_broken_link(tmp_path):
     rules_dir = tmp_path / "rules"
     rules_dir.mkdir()
@@ -124,11 +110,6 @@ def test_stale_symlink_warnings_detects_broken_link(tmp_path):
 def test_stale_symlink_warnings_empty_when_no_rules_dir(tmp_path):
     with patch.object(symlinks, "RULES_DIR", tmp_path / "missing"):
         assert symlinks.stale_symlink_warnings() == []
-
-
-# ---------------------------------------------------------------------------
-# Apply symlinks
-# ---------------------------------------------------------------------------
 
 
 def test_apply_creates_symlink(tmp_path):

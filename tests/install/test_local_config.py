@@ -6,10 +6,6 @@ import pytest
 
 from install import local_config
 
-# ---------------------------------------------------------------------------
-# _parse_local_config_content
-# ---------------------------------------------------------------------------
-
 _LOCAL_CONFIG_CONTENT = """\
 # Local configuration — DO NOT COMMIT
 
@@ -63,11 +59,6 @@ def test_parse_local_config_content_parses_text_directly():
     assert "/tg" in result["repo_paths"]
 
 
-# ---------------------------------------------------------------------------
-# _build_repos_list
-# ---------------------------------------------------------------------------
-
-
 def test_build_repos_list_no_fxci(tmp_path):
     tg = tmp_path / "taskcluster" / "taskgraph"
     repos = local_config.build_repos_list(tg, None, tmp_path)
@@ -102,11 +93,6 @@ def test_build_repos_list_deduplicates_taskgraph(tmp_path):
 
     repos = local_config.build_repos_list(tg, fxci, tmp_path)
     assert sum(1 for r in repos if r["name"] == "taskcluster/taskgraph") == 1
-
-
-# ---------------------------------------------------------------------------
-# _compute_local_config_update
-# ---------------------------------------------------------------------------
 
 
 def test_compute_local_config_update_detects_new_repo(tmp_path):
@@ -172,11 +158,6 @@ def test_compute_local_config_update_no_taskgraph_repo_returns_empty(tmp_path):
     assert repos == []
 
 
-# ---------------------------------------------------------------------------
-# _get_search_root
-# ---------------------------------------------------------------------------
-
-
 def test_get_search_root_valid_dir(tmp_path):
     with patch("builtins.input", return_value=str(tmp_path)):
         assert local_config.get_search_root() == tmp_path
@@ -199,11 +180,6 @@ def test_get_search_root_not_a_dir_exits(tmp_path):
         local_config.get_search_root()
 
 
-# ---------------------------------------------------------------------------
-# _matches_pyproject_name
-# ---------------------------------------------------------------------------
-
-
 def test_matches_pyproject_name_double_quotes():
     assert local_config.matches_pyproject_name(
         '[project]\nname = "taskgraph"\n', "taskgraph"
@@ -220,11 +196,6 @@ def test_matches_pyproject_name_no_match():
     assert not local_config.matches_pyproject_name(
         '[project]\nname = "other"\n', "taskgraph"
     )
-
-
-# ---------------------------------------------------------------------------
-# _scan_pyprojects
-# ---------------------------------------------------------------------------
 
 
 def test_scan_pyprojects_finds_taskgraph(tmp_path):
@@ -279,11 +250,6 @@ def test_scan_pyprojects_no_duplicates(tmp_path):
     assert taskgraph.count(tg) == 1
 
 
-# ---------------------------------------------------------------------------
-# _find_repo_candidates
-# ---------------------------------------------------------------------------
-
-
 def test_find_repo_candidates_finds_taskgraph_via_init(tmp_path):
     tg = tmp_path / "taskgraph"
     pkg = tg / "taskgraph"
@@ -304,11 +270,6 @@ def test_find_repo_candidates_no_duplicates_across_pyproject_and_init(tmp_path):
     (pkg / "__init__.py").write_text("")
     taskgraph, _ = local_config.find_repo_candidates(tmp_path)
     assert taskgraph.count(tg) == 1
-
-
-# ---------------------------------------------------------------------------
-# _render_local_config
-# ---------------------------------------------------------------------------
 
 
 def test_render_local_config_without_fxci():
@@ -337,10 +298,6 @@ def test_render_local_config_structure():
     assert "## Tracked repositories" in content
     assert "repos:" in content
 
-
-# ---------------------------------------------------------------------------
-# _parse_github_slugs
-# ---------------------------------------------------------------------------
 
 _PROJECTS_YML = """\
 ---
@@ -382,11 +339,6 @@ def test_parse_github_slugs_strips_dot_git_suffix(tmp_path):
 
 def test_parse_github_slugs_missing_file_returns_empty(tmp_path):
     assert local_config.parse_github_slugs(tmp_path) == set()
-
-
-# ---------------------------------------------------------------------------
-# _discover_tracked_repos
-# ---------------------------------------------------------------------------
 
 
 def test_discover_tracked_repos_finds_matching_local_clone(tmp_path):
@@ -458,11 +410,6 @@ def test_discover_tracked_repos_finds_repo_in_subdirectory(tmp_path):
     assert repos == [{"name": "taskcluster/taskgraph", "path": str(tg)}]
 
 
-# ---------------------------------------------------------------------------
-# _pick_repo
-# ---------------------------------------------------------------------------
-
-
 def test_pick_repo_single_returns_it():
     assert local_config.pick_repo([Path("/a")], "mything", required=True) == Path("/a")
 
@@ -484,11 +431,6 @@ def test_pick_repo_required_missing_exits():
 
 def test_pick_repo_optional_missing_returns_none():
     assert local_config.pick_repo([], "mything", required=False) is None
-
-
-# ---------------------------------------------------------------------------
-# _generate_local_config
-# ---------------------------------------------------------------------------
 
 
 def test_generate_local_config_finds_taskgraph(tmp_path):

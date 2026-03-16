@@ -2,10 +2,6 @@ from unittest.mock import patch
 
 from install import preflight
 
-# ---------------------------------------------------------------------------
-# _old_shell_hook_warnings
-# ---------------------------------------------------------------------------
-
 
 def test_old_shell_hook_warnings_notes_replaceable_hooks(tmp_path):
     old_hooks_dir = tmp_path / "hooks"
@@ -27,11 +23,6 @@ def test_old_shell_hook_warnings_notes_replaceable_hooks(tmp_path):
 def test_old_shell_hook_warnings_empty_when_no_hooks_dir(tmp_path):
     with patch.object(preflight, "CLAUDE_DIR", tmp_path):
         assert preflight.old_shell_hook_warnings() == []
-
-
-# ---------------------------------------------------------------------------
-# _check_preflight_warnings (integration)
-# ---------------------------------------------------------------------------
 
 
 def test_preflight_rules_dir_is_file(tmp_path):
