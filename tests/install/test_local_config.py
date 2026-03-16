@@ -427,6 +427,23 @@ def test_discover_tracked_repos_matches_by_org_and_name(tmp_path):
     ]
 
 
+def test_discover_tracked_repos_skips_match_inside_git_repo(tmp_path):
+    fxci = tmp_path / "fxci-config"
+    fxci.mkdir()
+    (fxci / "projects.yml").write_text(
+        "glean:\n  repo: https://github.com/mozilla/glean\n"
+    )
+    # Simulate Firefox build output: obj-*/dist/include/mozilla/glean inside a git repo
+    firefox = tmp_path / "firefox"
+    firefox.mkdir()
+    (firefox / ".git").mkdir()
+    nested = firefox / "obj-x86_64" / "dist" / "include" / "mozilla" / "glean"
+    nested.mkdir(parents=True)
+
+    repos = local_config.discover_tracked_repos(fxci, tmp_path)
+    assert repos == []
+
+
 def test_discover_tracked_repos_finds_repo_in_subdirectory(tmp_path):
     fxci = tmp_path / "fxci-config"
     fxci.mkdir()

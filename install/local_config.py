@@ -95,6 +95,9 @@ def discover_tracked_repos(fxci_config_repo, search_root):
         dirnames[:] = [
             d for d in dirnames if d not in _SKIP_DIRS and not d.startswith(".")
         ]
+        if (Path(dirpath) / ".git").exists():
+            dirnames.clear()
+            continue
         parent = Path(dirpath).name
         for child in dirnames:
             slug = slug_map.get((parent, child))
