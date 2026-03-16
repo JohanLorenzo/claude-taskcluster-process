@@ -1,0 +1,28 @@
+{
+  "PreToolUse": [
+    {
+      "matcher": "",
+      "hooks": [
+        {"type": "command", "command": "hooks/require_local_config.py"}
+      ]
+    },
+    {
+      "matcher": "Bash",
+      "hooks": [
+        {"type": "command", "command": "hooks/block_no_verify.py"},
+        {"type": "command", "command": "hooks/require_signin_scope.py"},
+        {"type": "command", "command": "hooks/check_push_target.py"},
+        {"type": "command", "command": "hooks/check_force_push.py"},
+        {"type": "command", "command": "hooks/block_ci_admin_prod.py"}
+      ]
+    }
+  ],
+  "PostToolUse": [
+    {
+      "matcher": "Edit|Write",
+      "hooks": [
+        {"type": "command", "command": "hooks/clippy_on_rust_edit.py"}
+      ]
+    }
+  ]
+}
