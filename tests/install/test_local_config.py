@@ -128,7 +128,10 @@ def test_compute_local_config_update_detects_new_repo(tmp_path):
         f"  - name: taskcluster/taskgraph\n    path: {tg}\n"
     )
 
-    with patch.object(local_config, "LOCAL_CONFIG_FILE", config_file):
+    with (
+        patch.object(local_config, "LOCAL_CONFIG_FILE", config_file),
+        patch("builtins.input", return_value=str(tmp_path)),
+    ):
         diff, new_content, repos = local_config.compute_local_config_update()
 
     assert diff
@@ -150,7 +153,10 @@ def test_compute_local_config_update_no_diff_when_current(tmp_path):
     config_file = tmp_path / "CLAUDE.local.md"
     config_file.write_text(current_content)
 
-    with patch.object(local_config, "LOCAL_CONFIG_FILE", config_file):
+    with (
+        patch.object(local_config, "LOCAL_CONFIG_FILE", config_file),
+        patch("builtins.input", return_value=str(tmp_path)),
+    ):
         diff, _, _ = local_config.compute_local_config_update()
 
     assert not diff

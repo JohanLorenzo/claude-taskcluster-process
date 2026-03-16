@@ -321,7 +321,11 @@ def test_main_exits_without_prompt_when_no_changes(tmp_path, caplog):
         patch.object(preflight, "SETTINGS_FILE", settings_file),
         patch.object(preflight, "CLAUDE_DIR", tmp_path),
         patch.object(install, "LOCAL_CONFIG_FILE", local_config_file),
-        patch("builtins.input", side_effect=AssertionError("should not prompt")),
+        # First input: search root prompt. Second input: should never be reached.
+        patch(
+            "builtins.input",
+            side_effect=[str(tmp_path), AssertionError("should not prompt for apply")],
+        ),
         pytest.raises(SystemExit) as exc,
     ):
         install.main()

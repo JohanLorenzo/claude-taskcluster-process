@@ -144,9 +144,8 @@ def compute_local_config_update():
     fxci_config_repo = config["fxci_config_repo"]
     if not taskgraph_repo:
         return [], None, []
-    repos = build_repos_list(
-        taskgraph_repo, fxci_config_repo, taskgraph_repo.parent.parent
-    )
+    root = get_search_root()
+    repos = build_repos_list(taskgraph_repo, fxci_config_repo, root)
     new_content = render_local_config(taskgraph_repo, fxci_config_repo, repos)
     diff = unified_diff(
         old_content,
