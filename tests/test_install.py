@@ -143,10 +143,11 @@ def test_compute_local_config_update_detects_new_repo(tmp_path):
     )
 
     with patch.object(inst, "LOCAL_CONFIG_FILE", config_file):
-        diff, new_content = inst._compute_local_config_update()
+        diff, new_content, repos = inst._compute_local_config_update()
 
     assert diff  # there is a diff
     assert "scriptworker-scripts" in new_content
+    assert any(r["name"] == "mozilla-releng/scriptworker-scripts" for r in repos)
 
 
 def test_compute_local_config_update_no_diff_when_current(tmp_path):
@@ -164,7 +165,7 @@ def test_compute_local_config_update_no_diff_when_current(tmp_path):
     config_file.write_text(current_content)
 
     with patch.object(inst, "LOCAL_CONFIG_FILE", config_file):
-        diff, _ = inst._compute_local_config_update()
+        diff, _, _ = inst._compute_local_config_update()
 
     assert not diff
 
@@ -173,9 +174,10 @@ def test_compute_local_config_update_no_taskgraph_repo_returns_empty(tmp_path):
     config_file = tmp_path / "CLAUDE.local.md"
     config_file.write_text("# no taskgraph_repo set\n")
     with patch.object(inst, "LOCAL_CONFIG_FILE", config_file):
-        diff, new_content = inst._compute_local_config_update()
+        diff, new_content, repos = inst._compute_local_config_update()
     assert diff == []
     assert new_content is None
+    assert repos == []
 
 
 # ---------------------------------------------------------------------------
@@ -214,8 +216,7 @@ def test_new_settings_replaces_hooks_only(tmp_path):
         old = inst._load_settings()
 
     new_hooks = {"PreToolUse": [{"matcher": "Bash", "hooks": []}]}
-    with patch.object(inst, "_read_local_config_repos", return_value=[]):
-        new = inst._compute_new_settings(old, new_hooks)
+    new = inst._compute_new_settings(old, new_hooks, repo_paths=[])
 
     assert new["hooks"] == new_hooks
     assert new["model"] == "opusplan"
@@ -230,8 +231,7 @@ def test_new_settings_adds_additional_directories(tmp_path):
         old = inst._load_settings()
 
     repo_paths = ["/some/repo", "/other/repo"]
-    with patch.object(inst, "_read_local_config_repos", return_value=repo_paths):
-        new = inst._compute_new_settings(old, {})
+    new = inst._compute_new_settings(old, {}, repo_paths=repo_paths)
 
     assert new["permissions"]["additionalDirectories"] == repo_paths
 
@@ -250,8 +250,7 @@ def test_new_settings_preserves_other_permissions_keys(tmp_path):
     with patch.object(inst, "SETTINGS_FILE", settings_file):
         old = inst._load_settings()
 
-    with patch.object(inst, "_read_local_config_repos", return_value=["/p"]):
-        new = inst._compute_new_settings(old, {})
+    new = inst._compute_new_settings(old, {}, repo_paths=["/p"])
 
     assert new["permissions"]["allow"] == ["Bash(git:*)"]
     assert new["permissions"]["deny"] == ["Bash(rm:*)"]

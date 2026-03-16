@@ -113,7 +113,7 @@ def _compute_local_config_update():
     taskgraph_repo = config["taskgraph_repo"]
     fxci_config_repo = config["fxci_config_repo"]
     if not taskgraph_repo:
-        return [], None
+        return [], None, []
     search_root = taskgraph_repo.parent.parent
     tg_slug = "/".join(taskgraph_repo.parts[-2:])
     repos = [{"name": tg_slug, "path": str(taskgraph_repo)}]
@@ -133,13 +133,14 @@ def _compute_local_config_update():
             tofile=str(LOCAL_CONFIG_FILE) + " (new)",
         )
     )
-    return diff, new_content
+    return diff, new_content, repos
 
 
-def _compute_new_settings(old_settings, hooks_config):
+def _compute_new_settings(old_settings, hooks_config, repo_paths=None):
     new_settings = json.loads(json.dumps(old_settings))
     new_settings["hooks"] = hooks_config
-    repo_paths = _read_local_config_repos()
+    if repo_paths is None:
+        repo_paths = _read_local_config_repos()
     if repo_paths:
         perms = new_settings.setdefault("permissions", {})
         perms["additionalDirectories"] = repo_paths
@@ -390,7 +391,6 @@ def main():
 
     settings = _load_settings()
     hooks_config = _load_hooks_config()
-    new_settings = _compute_new_settings(settings, hooks_config)
 
     symlink_ops = _compute_symlink_ops()
     warnings, errors = _check_preflight_warnings(symlink_ops)
@@ -402,7 +402,11 @@ def main():
     if errors:
         sys.exit(1)
 
-    local_config_diff, new_local_content = _compute_local_config_update()
+    local_config_diff, new_local_content, new_repos = _compute_local_config_update()
+    new_repo_paths = [r["path"] for r in new_repos]
+    new_settings = _compute_new_settings(
+        settings, hooks_config, repo_paths=new_repo_paths
+    )
     if local_config_diff:
         print(f"\n--- {LOCAL_CONFIG_FILE} ---")
         print("".join(local_config_diff))
