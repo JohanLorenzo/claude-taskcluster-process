@@ -823,17 +823,82 @@ def test_get_search_root_not_a_dir_exits(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# _find_repo_candidates
+# _matches_pyproject_name
 # ---------------------------------------------------------------------------
 
 
-def test_find_repo_candidates_finds_taskgraph_via_pyproject(tmp_path):
+def test_matches_pyproject_name_double_quotes():
+    assert inst._matches_pyproject_name('[project]\nname = "taskgraph"\n', "taskgraph")
+
+
+def test_matches_pyproject_name_single_quotes():
+    assert inst._matches_pyproject_name("[project]\nname = 'taskgraph'\n", "taskgraph")
+
+
+def test_matches_pyproject_name_no_match():
+    assert not inst._matches_pyproject_name('[project]\nname = "other"\n', "taskgraph")
+
+
+# ---------------------------------------------------------------------------
+# _scan_pyprojects
+# ---------------------------------------------------------------------------
+
+
+def test_scan_pyprojects_finds_taskgraph(tmp_path):
     tg = tmp_path / "taskgraph"
     tg.mkdir()
     (tg / "pyproject.toml").write_text('[project]\nname = "taskgraph"\n')
-    taskgraph, fxci = inst._find_repo_candidates(tmp_path)
+    taskgraph, fxci = inst._scan_pyprojects(tmp_path)
     assert tg in taskgraph
     assert fxci == []
+
+
+def test_scan_pyprojects_handles_src_layout(tmp_path):
+    tg = tmp_path / "taskgraph"
+    src = tg / "src"
+    src.mkdir(parents=True)
+    (tg / ".git").mkdir()
+    (src / "pyproject.toml").write_text('[project]\nname = "taskgraph"\n')
+    taskgraph, _ = inst._scan_pyprojects(tmp_path)
+    assert tg in taskgraph
+    assert src not in taskgraph
+
+
+def test_scan_pyprojects_finds_fxci_config(tmp_path):
+    fxci = tmp_path / "fxci-config"
+    fxci.mkdir()
+    (fxci / "pyproject.toml").write_text('[project]\nname = "fxci-config"\n')
+    _, fxci_candidates = inst._scan_pyprojects(tmp_path)
+    assert fxci in fxci_candidates
+
+
+def test_scan_pyprojects_skips_unreadable(tmp_path):
+    bad = tmp_path / "bad"
+    bad.mkdir()
+    pyproject = bad / "pyproject.toml"
+    pyproject.write_text("")
+    pyproject.chmod(0o000)
+    try:
+        taskgraph, fxci = inst._scan_pyprojects(tmp_path)
+        assert taskgraph == []
+        assert fxci == []
+    finally:
+        pyproject.chmod(0o644)
+
+
+def test_scan_pyprojects_no_duplicates(tmp_path):
+    tg = tmp_path / "taskgraph"
+    src = tg / "src"
+    src.mkdir(parents=True)
+    (tg / ".git").mkdir()
+    (src / "pyproject.toml").write_text('[project]\nname = "taskgraph"\n')
+    taskgraph, _ = inst._scan_pyprojects(tmp_path)
+    assert taskgraph.count(tg) == 1
+
+
+# ---------------------------------------------------------------------------
+# _find_repo_candidates
+# ---------------------------------------------------------------------------
 
 
 def test_find_repo_candidates_finds_taskgraph_via_init(tmp_path):
@@ -845,40 +910,7 @@ def test_find_repo_candidates_finds_taskgraph_via_init(tmp_path):
     assert tg in taskgraph
 
 
-def test_find_repo_candidates_handles_src_layout(tmp_path):
-    tg = tmp_path / "taskgraph"
-    src = tg / "src"
-    src.mkdir(parents=True)
-    (tg / ".git").mkdir()
-    (src / "pyproject.toml").write_text('[project]\nname = "taskgraph"\n')
-    taskgraph, _ = inst._find_repo_candidates(tmp_path)
-    assert tg in taskgraph
-    assert src not in taskgraph
-
-
-def test_find_repo_candidates_finds_fxci_config(tmp_path):
-    fxci = tmp_path / "fxci-config"
-    fxci.mkdir()
-    (fxci / "pyproject.toml").write_text('[project]\nname = "fxci-config"\n')
-    _, fxci_candidates = inst._find_repo_candidates(tmp_path)
-    assert fxci in fxci_candidates
-
-
-def test_find_repo_candidates_skips_unreadable_pyproject(tmp_path):
-    bad = tmp_path / "bad"
-    bad.mkdir()
-    pyproject = bad / "pyproject.toml"
-    pyproject.write_text("")
-    pyproject.chmod(0o000)
-    try:
-        taskgraph, fxci = inst._find_repo_candidates(tmp_path)
-        assert taskgraph == []
-        assert fxci == []
-    finally:
-        pyproject.chmod(0o644)
-
-
-def test_find_repo_candidates_no_duplicates(tmp_path):
+def test_find_repo_candidates_no_duplicates_across_pyproject_and_init(tmp_path):
     tg = tmp_path / "taskgraph"
     src = tg / "src"
     src.mkdir(parents=True)

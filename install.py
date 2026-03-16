@@ -292,27 +292,36 @@ def _get_search_root():
     return root
 
 
-def _find_repo_candidates(root):
-    taskgraph_candidates = []
-    fxci_candidates = []
+def _matches_pyproject_name(text, name):
+    return f'name = "{name}"' in text or f"name = '{name}'" in text
+
+
+def _scan_pyprojects(root):
+    taskgraph, fxci = [], []
     for pyproject in _find_files(root, "pyproject.toml"):
         try:
             text = pyproject.read_text()
         except OSError:
             continue
-        if 'name = "taskgraph"' in text or "name = 'taskgraph'" in text:
+        if _matches_pyproject_name(text, "taskgraph"):
             candidate = _repo_root(pyproject.parent)
-            if candidate not in taskgraph_candidates:
-                taskgraph_candidates.append(candidate)
+            if candidate not in taskgraph:
+                taskgraph.append(candidate)
         if (
-            'name = "fxci-config"' in text or "name = 'fxci-config'" in text
-        ) and pyproject.parent not in fxci_candidates:
-            fxci_candidates.append(pyproject.parent)
+            _matches_pyproject_name(text, "fxci-config")
+            and pyproject.parent not in fxci
+        ):
+            fxci.append(pyproject.parent)
+    return taskgraph, fxci
+
+
+def _find_repo_candidates(root):
+    taskgraph, fxci = _scan_pyprojects(root)
     for init in _find_files(root, "taskgraph/__init__.py"):
         candidate = _repo_root(init.parent.parent)
-        if candidate not in taskgraph_candidates:
-            taskgraph_candidates.append(candidate)
-    return taskgraph_candidates, fxci_candidates
+        if candidate not in taskgraph:
+            taskgraph.append(candidate)
+    return taskgraph, fxci
 
 
 def _render_local_config(taskgraph_repo, fxci_config_repo, repos):
