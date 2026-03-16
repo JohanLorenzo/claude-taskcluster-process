@@ -340,6 +340,31 @@ def test_check_tools_optional_missing_continues(capsys):
 
 
 # ---------------------------------------------------------------------------
+# _pick_repo
+# ---------------------------------------------------------------------------
+
+
+def test_pick_repo_single_returns_it():
+    assert inst._pick_repo([Path("/a")], "mything", required=True) == Path("/a")
+
+
+def test_pick_repo_multiple_prompts(capsys):
+    with patch("builtins.input", return_value="2"):
+        result = inst._pick_repo([Path("/a"), Path("/b")], "mything", required=True)
+    assert result == Path("/b")
+    assert "mything" in capsys.readouterr().out
+
+
+def test_pick_repo_required_missing_exits():
+    with pytest.raises(SystemExit):
+        inst._pick_repo([], "mything", required=True)
+
+
+def test_pick_repo_optional_missing_returns_none():
+    assert inst._pick_repo([], "mything", required=False) is None
+
+
+# ---------------------------------------------------------------------------
 # CLAUDE.local.md generation
 # ---------------------------------------------------------------------------
 

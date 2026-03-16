@@ -224,11 +224,31 @@ def _find_files(root, relative_pattern):
             yield candidate
 
 
+def _repo_root(path):
+    if path.name == "src" and (path.parent / ".git").is_dir():
+        return path.parent
+    return path
+
+
+def _pick_repo(candidates, label, *, required):
+    if not candidates:
+        if required:
+            print(f"ERROR: Could not find a {label} checkout.", file=sys.stderr)
+            sys.exit(1)
+        print(f"{label} not found — skipping.")
+        return None
+    if len(candidates) == 1:
+        print(f"Found {label}: {candidates[0]}")
+        return candidates[0]
+    print(f"Multiple {label} candidates found:")
+    for i, c in enumerate(candidates):
+        print(f"  {i + 1}. {c}")
+    return candidates[int(input("Pick one (number): ").strip()) - 1]
+
+
 def _generate_local_config():
     print("\n--- CLAUDE.local.md setup ---")
-    root_input = input(
-        "Enter root path to search for repositories (e.g., ~/git): "
-    ).strip()
+    root_input = input("Enter root path to search for repos (e.g., ~/git): ").strip()
     root = Path(root_input).expanduser().resolve()
     if not root.is_dir():
         print(f"ERROR: {root} is not a directory.", file=sys.stderr)
@@ -243,67 +263,38 @@ def _generate_local_config():
         except OSError:
             continue
         if 'name = "taskgraph"' in text or "name = 'taskgraph'" in text:
-            candidate = pyproject.parent
-            if candidate.name == "src" and (candidate.parent / ".git").is_dir():
-                candidate = candidate.parent
+            candidate = _repo_root(pyproject.parent)
             if candidate not in taskgraph_candidates:
                 taskgraph_candidates.append(candidate)
-        if 'name = "fxci-config"' in text or "name = 'fxci-config'" in text:
-            candidate = pyproject.parent
-            if candidate not in fxci_candidates:
-                fxci_candidates.append(candidate)
+        if (
+            'name = "fxci-config"' in text or "name = 'fxci-config'" in text
+        ) and pyproject.parent not in fxci_candidates:
+            fxci_candidates.append(pyproject.parent)
     for init in _find_files(root, "taskgraph/__init__.py"):
-        candidate = init.parent.parent
-        if candidate.name == "src" and (candidate.parent / ".git").is_dir():
-            candidate = candidate.parent
+        candidate = _repo_root(init.parent.parent)
         if candidate not in taskgraph_candidates:
             taskgraph_candidates.append(candidate)
 
-    if not taskgraph_candidates:
-        print("ERROR: Could not find a taskgraph checkout.", file=sys.stderr)
-        sys.exit(1)
-
-    if len(taskgraph_candidates) == 1:
-        taskgraph_repo = taskgraph_candidates[0]
-        print(f"Found taskgraph: {taskgraph_repo}")
-    else:
-        print("Multiple taskgraph candidates found:")
-        for i, c in enumerate(taskgraph_candidates):
-            print(f"  {i + 1}. {c}")
-        choice = input("Pick one (number): ").strip()
-        taskgraph_repo = taskgraph_candidates[int(choice) - 1]
-
-    fxci_config_repo = None
-    if not fxci_candidates:
-        print("fxci-config not found — skipping tracked repo discovery.")
-    elif len(fxci_candidates) == 1:
-        fxci_config_repo = fxci_candidates[0]
-        print(f"Found fxci-config: {fxci_config_repo}")
-    else:
-        print("Multiple fxci-config candidates found:")
-        for i, c in enumerate(fxci_candidates):
-            print(f"  {i + 1}. {c}")
-        choice = input("Pick one (number): ").strip()
-        fxci_config_repo = fxci_candidates[int(choice) - 1]
+    taskgraph_repo = _pick_repo(taskgraph_candidates, "taskgraph", required=True)
+    fxci_config_repo = _pick_repo(fxci_candidates, "fxci-config", required=False)
 
     repos = [{"name": "taskcluster/taskgraph", "path": str(taskgraph_repo)}]
     if fxci_config_repo:
         repos.extend(_discover_tracked_repos(fxci_config_repo, root))
 
-    lines = ["# Local configuration — DO NOT COMMIT\n\n"]
-    lines.append(f"## Required paths\ntaskgraph_repo: {taskgraph_repo}\n")
-    if fxci_config_repo:
-        lines.append(f"fxci_config_repo: {fxci_config_repo}\n")
-    lines.append("\n## Tracked repositories\n")
-    lines.append("repos:\n")
-    for repo in repos:
-        lines.append(f"  - name: {repo['name']}\n    path: {repo['path']}\n")
-
-    content = "".join(lines)
+    fxci_line = f"fxci_config_repo: {fxci_config_repo}\n" if fxci_config_repo else ""
+    repo_lines = "".join(
+        f"  - name: {r['name']}\n    path: {r['path']}\n" for r in repos
+    )
+    content = (
+        "# Local configuration — DO NOT COMMIT\n\n"
+        f"## Required paths\ntaskgraph_repo: {taskgraph_repo}\n"
+        f"{fxci_line}"
+        f"\n## Tracked repositories\nrepos:\n{repo_lines}"
+    )
     print("\n--- Generated CLAUDE.local.md ---")
     print(content)
-    answer = input("Write CLAUDE.local.md? [y/N]: ").strip().lower()
-    if answer != "y":
+    if input("Write CLAUDE.local.md? [y/N]: ").strip().lower() != "y":
         print("Aborted.")
         sys.exit(0)
     LOCAL_CONFIG_FILE.write_text(content)
