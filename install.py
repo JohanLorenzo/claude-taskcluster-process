@@ -5,6 +5,7 @@ import copy
 import difflib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -89,29 +90,15 @@ def _unified_diff(old_text, new_text, fromfile, tofile):
 
 
 def _parse_local_config_content(text):
-    result = {"taskgraph_repo": None, "fxci_config_repo": None, "repo_paths": []}
-    in_repos = False
-    for line in text.splitlines():
-        stripped = line.strip()
-        if stripped.startswith("taskgraph_repo:"):
-            result["taskgraph_repo"] = Path(stripped[len("taskgraph_repo:") :].strip())
-        elif stripped.startswith("fxci_config_repo:"):
-            result["fxci_config_repo"] = Path(
-                stripped[len("fxci_config_repo:") :].strip()
-            )
-        elif stripped == "repos:":
-            in_repos = True
-        elif in_repos:
-            if stripped.startswith("path:"):
-                result["repo_paths"].append(stripped[len("path:") :].strip())
-            elif (
-                stripped
-                and not stripped.startswith("#")
-                and ":" in stripped
-                and not stripped.startswith("-")
-            ):
-                in_repos = False
-    return result
+    def get_path(key):
+        m = re.search(rf"^{key}:\s*(.+)$", text, re.MULTILINE)
+        return Path(m.group(1).strip()) if m else None
+
+    return {
+        "taskgraph_repo": get_path("taskgraph_repo"),
+        "fxci_config_repo": get_path("fxci_config_repo"),
+        "repo_paths": re.findall(r"^\s+path:\s*(.+)$", text, re.MULTILINE),
+    }
 
 
 def _build_repos_list(taskgraph_repo, fxci_config_repo, search_root):
