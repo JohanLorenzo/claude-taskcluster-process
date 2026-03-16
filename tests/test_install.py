@@ -391,6 +391,37 @@ def test_generate_local_config_finds_fxci_config(tmp_path):
     assert str(fxci_dir) in written_content.get("content", "")
 
 
+def test_generate_local_config_picks_fxci_config_when_multiple(tmp_path):
+    tg_dir = tmp_path / "git" / "taskcluster" / "taskgraph"
+    tg_dir.mkdir(parents=True)
+    (tg_dir / "pyproject.toml").write_text('[project]\nname = "taskgraph"\n')
+
+    fxci1 = tmp_path / "git" / "taskcluster" / "fxci-config"
+    fxci1.mkdir(parents=True)
+    (fxci1 / "pyproject.toml").write_text('[project]\nname = "fxci-config"\n')
+
+    fxci2 = tmp_path / "git" / "mozilla-releng" / "fxci-config"
+    fxci2.mkdir(parents=True)
+    (fxci2 / "pyproject.toml").write_text('[project]\nname = "fxci-config"\n')
+
+    written_content = {}
+
+    def fake_write_text(self, text):
+        written_content["content"] = text
+
+    # inputs: root_path, pick "2" for fxci-config, "y" to write
+    inputs = [str(tmp_path / "git"), "2", "y"]
+    with (
+        patch("builtins.input", side_effect=inputs),
+        patch.object(inst, "LOCAL_CONFIG_FILE", tmp_path / "CLAUDE.local.md"),
+        patch.object(Path, "write_text", fake_write_text),
+    ):
+        inst._generate_local_config()
+
+    content = written_content.get("content", "")
+    assert str(fxci1) in content or str(fxci2) in content
+
+
 def test_generate_local_config_skipped_when_exists(tmp_path):
     config = tmp_path / "CLAUDE.local.md"
     config.write_text("taskgraph_repo: /existing\n")

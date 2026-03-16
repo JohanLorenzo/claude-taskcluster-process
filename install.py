@@ -270,18 +270,29 @@ def _generate_local_config():
         taskgraph_repo = taskgraph_candidates[int(choice) - 1]
 
     print(f"\nSearching for fxci-config repo under {root}...")
-    fxci_config_repo = None
+    fxci_candidates = []
     for pyproject in _find_files(root, "pyproject.toml"):
         try:
             text = pyproject.read_text()
             if 'name = "fxci-config"' in text or "name = 'fxci-config'" in text:
-                fxci_config_repo = pyproject.parent
-                print(f"Found fxci-config: {fxci_config_repo}")
-                break
+                candidate = pyproject.parent
+                if candidate not in fxci_candidates:
+                    fxci_candidates.append(candidate)
         except OSError:
             pass
-    if not fxci_config_repo:
+
+    fxci_config_repo = None
+    if not fxci_candidates:
         print("fxci-config not found — skipping tracked repo discovery.")
+    elif len(fxci_candidates) == 1:
+        fxci_config_repo = fxci_candidates[0]
+        print(f"Found fxci-config: {fxci_config_repo}")
+    else:
+        print("Multiple fxci-config candidates found:")
+        for i, c in enumerate(fxci_candidates):
+            print(f"  {i + 1}. {c}")
+        choice = input("Pick one (number): ").strip()
+        fxci_config_repo = fxci_candidates[int(choice) - 1]
 
     repos = [{"name": "taskcluster/taskgraph", "path": str(taskgraph_repo)}]
     if fxci_config_repo:
