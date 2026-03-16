@@ -8,6 +8,7 @@ import os
 import shutil
 import subprocess
 import sys
+from dataclasses import dataclass, field
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent
@@ -379,65 +380,71 @@ def _discover_tracked_repos(fxci_config_repo, search_root):
     return repos
 
 
-def main():
-    _check_tools()
+@dataclass
+class _Plan:
+    local_config_diff: list
+    new_local_content: str | None
+    settings_diff: list
+    new_settings: dict
+    symlink_ops: list
+    actionable_ops: list
+    warnings: list = field(default_factory=list)
 
-    if not LOCAL_CONFIG_FILE.exists():
-        _generate_local_config()
+    @property
+    def has_changes(self):
+        return bool(self.local_config_diff or self.settings_diff or self.actionable_ops)
 
+
+def _plan_changes():
     settings = _load_settings()
     hooks_config = _load_hooks_config()
-
     symlink_ops = _compute_symlink_ops()
     warnings, errors = _check_preflight_warnings(symlink_ops)
-
-    for w in warnings:
-        print(w)
     for e in errors:
         print(e, file=sys.stderr)
     if errors:
         sys.exit(1)
-
     local_config_diff, new_local_content, new_repos = _compute_local_config_update()
     new_repo_paths = [r["path"] for r in new_repos]
     new_settings = _compute_new_settings(
         settings, hooks_config, repo_paths=new_repo_paths
     )
-    if local_config_diff:
-        print(f"\n--- {LOCAL_CONFIG_FILE} ---")
-        print("".join(local_config_diff))
-    else:
-        print(f"\n= no change: {LOCAL_CONFIG_FILE}")
+    return _Plan(
+        local_config_diff=local_config_diff,
+        new_local_content=new_local_content,
+        settings_diff=_settings_diff(settings, new_settings),
+        new_settings=new_settings,
+        symlink_ops=symlink_ops,
+        actionable_ops=[op for op in symlink_ops if op[0] != "noop"],
+        warnings=warnings,
+    )
 
-    diff = _settings_diff(settings, new_settings)
-    if diff:
-        print(f"\n--- {SETTINGS_FILE} ---")
-        print("".join(diff))
-    else:
-        print(f"\n= no change: {SETTINGS_FILE}")
 
-    if symlink_ops:
+def _preview_changes(plan):
+    for w in plan.warnings:
+        print(w)
+    for path, diff in [
+        (LOCAL_CONFIG_FILE, plan.local_config_diff),
+        (SETTINGS_FILE, plan.settings_diff),
+    ]:
+        if diff:
+            print(f"\n--- {path} ---")
+            print("".join(diff))
+        else:
+            print(f"\n= no change: {path}")
+    if plan.symlink_ops:
         print("\n--- rules/ symlinks ---")
-        _print_symlink_ops(symlink_ops)
+        _print_symlink_ops(plan.symlink_ops)
 
-    actionable_ops = [op for op in symlink_ops if op[0] != "noop"]
-    if not local_config_diff and not diff and not actionable_ops:
-        print("\nAlready up to date.")
-        sys.exit(0)
 
-    if input("\nApply changes? [y/N]: ").strip().lower() != "y":
-        print("No changes made.")
-        sys.exit(0)
-
-    if local_config_diff:
-        LOCAL_CONFIG_FILE.write_text(new_local_content)
+def _apply_changes(plan):
+    if plan.local_config_diff:
+        LOCAL_CONFIG_FILE.write_text(plan.new_local_content)
         print(f"Updated: {LOCAL_CONFIG_FILE}")
-
-    SETTINGS_FILE.write_text(json.dumps(new_settings, indent=2) + "\n")
+    SETTINGS_FILE.write_text(json.dumps(plan.new_settings, indent=2) + "\n")
     print(f"Updated: {SETTINGS_FILE}")
-
     RULES_DIR.mkdir(exist_ok=True)
-    for op in actionable_ops:
+    for op in plan.actionable_ops:
         if op[0] in ("create", "update"):
             src, target = op[1], op[2]
             if target.is_symlink() or target.exists():
@@ -449,7 +456,6 @@ def main():
             target.unlink()
             target.symlink_to(src)
             print(f"Replaced: {target} → {src}")
-
     print("\nDone.")
     if (
         subprocess.run(
@@ -460,6 +466,21 @@ def main():
         print(
             "Note: old ~/.claude/hooks/*.sh scripts can be removed if no longer needed."
         )
+
+
+def main():
+    _check_tools()
+    if not LOCAL_CONFIG_FILE.exists():
+        _generate_local_config()
+    plan = _plan_changes()
+    _preview_changes(plan)
+    if not plan.has_changes:
+        print("\nAlready up to date.")
+        sys.exit(0)
+    if input("\nApply changes? [y/N]: ").strip().lower() != "y":
+        print("No changes made.")
+        sys.exit(0)
+    _apply_changes(plan)
 
 
 if __name__ == "__main__":

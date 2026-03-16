@@ -429,6 +429,167 @@ def test_symlink_ops_replace_regular_file(tmp_path):
 
 
 # ---------------------------------------------------------------------------
+# _Plan
+# ---------------------------------------------------------------------------
+
+
+def test_plan_has_changes_true_when_diff():
+    plan = inst._Plan(
+        local_config_diff=["-old\n", "+new\n"],
+        new_local_content="new",
+        settings_diff=[],
+        new_settings={},
+        symlink_ops=[],
+        actionable_ops=[],
+    )
+    assert plan.has_changes
+
+
+def test_plan_has_changes_false_when_empty():
+    plan = inst._Plan(
+        local_config_diff=[],
+        new_local_content=None,
+        settings_diff=[],
+        new_settings={},
+        symlink_ops=[],
+        actionable_ops=[],
+    )
+    assert not plan.has_changes
+
+
+def test_plan_has_changes_true_when_actionable_ops(tmp_path):
+    src = tmp_path / "foo.md"
+    src.write_text("x")
+    target = tmp_path / "link.md"
+    plan = inst._Plan(
+        local_config_diff=[],
+        new_local_content=None,
+        settings_diff=[],
+        new_settings={},
+        symlink_ops=[("create", src, target)],
+        actionable_ops=[("create", src, target)],
+    )
+    assert plan.has_changes
+
+
+# ---------------------------------------------------------------------------
+# _preview_changes
+# ---------------------------------------------------------------------------
+
+
+def test_preview_changes_prints_no_change_when_up_to_date(capsys, tmp_path):
+    plan = inst._Plan(
+        local_config_diff=[],
+        new_local_content=None,
+        settings_diff=[],
+        new_settings={},
+        symlink_ops=[],
+        actionable_ops=[],
+    )
+    with (
+        patch.object(inst, "LOCAL_CONFIG_FILE", tmp_path / "CLAUDE.local.md"),
+        patch.object(inst, "SETTINGS_FILE", tmp_path / "settings.json"),
+    ):
+        inst._preview_changes(plan)
+    out = capsys.readouterr().out
+    assert "no change" in out
+
+
+def test_preview_changes_prints_warnings(capsys, tmp_path):
+    plan = inst._Plan(
+        local_config_diff=[],
+        new_local_content=None,
+        settings_diff=[],
+        new_settings={},
+        symlink_ops=[],
+        actionable_ops=[],
+        warnings=["WARNING: something"],
+    )
+    with (
+        patch.object(inst, "LOCAL_CONFIG_FILE", tmp_path / "CLAUDE.local.md"),
+        patch.object(inst, "SETTINGS_FILE", tmp_path / "settings.json"),
+    ):
+        inst._preview_changes(plan)
+    assert "WARNING: something" in capsys.readouterr().out
+
+
+# ---------------------------------------------------------------------------
+# _apply_changes
+# ---------------------------------------------------------------------------
+
+
+def test_apply_changes_writes_settings(tmp_path):
+    settings_file = _make_settings(tmp_path)
+    new_settings = {"model": "updated"}
+    rules_src = tmp_path / "rules"
+    rules_src.mkdir()
+    rules_target = tmp_path / "claude_rules"
+    rules_target.mkdir()
+    plan = inst._Plan(
+        local_config_diff=[],
+        new_local_content=None,
+        settings_diff=["-old"],
+        new_settings=new_settings,
+        symlink_ops=[],
+        actionable_ops=[],
+    )
+    with (
+        patch.object(inst, "SETTINGS_FILE", settings_file),
+        patch.object(inst, "RULES_DIR", rules_target),
+    ):
+        inst._apply_changes(plan)
+    assert json.loads(settings_file.read_text()) == new_settings
+
+
+def test_apply_changes_writes_local_config_when_diff(tmp_path):
+    settings_file = _make_settings(tmp_path)
+    local_config = tmp_path / "CLAUDE.local.md"
+    rules_target = tmp_path / "claude_rules"
+    rules_target.mkdir()
+    plan = inst._Plan(
+        local_config_diff=["-old\n", "+new\n"],
+        new_local_content="new content",
+        settings_diff=[],
+        new_settings={"model": "x"},
+        symlink_ops=[],
+        actionable_ops=[],
+    )
+    with (
+        patch.object(inst, "LOCAL_CONFIG_FILE", local_config),
+        patch.object(inst, "SETTINGS_FILE", settings_file),
+        patch.object(inst, "RULES_DIR", rules_target),
+    ):
+        inst._apply_changes(plan)
+    assert local_config.read_text() == "new content"
+
+
+def test_apply_changes_creates_symlink(tmp_path):
+    settings_file = _make_settings(tmp_path)
+    rules_src = tmp_path / "rules"
+    rules_src.mkdir()
+    md = rules_src / "foo.md"
+    md.write_text("# test\n")
+    rules_target = tmp_path / "claude_rules"
+    rules_target.mkdir()
+    link = rules_target / "foo.md"
+    plan = inst._Plan(
+        local_config_diff=[],
+        new_local_content=None,
+        settings_diff=[],
+        new_settings={"model": "x"},
+        symlink_ops=[("create", md, link)],
+        actionable_ops=[("create", md, link)],
+    )
+    with (
+        patch.object(inst, "SETTINGS_FILE", settings_file),
+        patch.object(inst, "RULES_DIR", rules_target),
+    ):
+        inst._apply_changes(plan)
+    assert link.is_symlink()
+    assert link.resolve() == md.resolve()
+
+
+# ---------------------------------------------------------------------------
 # already up to date
 # ---------------------------------------------------------------------------
 
