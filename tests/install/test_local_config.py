@@ -427,6 +427,20 @@ def test_discover_tracked_repos_matches_by_org_and_name(tmp_path):
     ]
 
 
+def test_discover_tracked_repos_finds_repo_in_subdirectory(tmp_path):
+    fxci = tmp_path / "fxci-config"
+    fxci.mkdir()
+    (fxci / "projects.yml").write_text(
+        "taskgraph:\n  repo: https://github.com/taskcluster/taskgraph\n"
+    )
+    # Repo nested one level deeper (e.g. user entered ~/git instead of ~/git/hub)
+    tg = tmp_path / "hub" / "taskcluster" / "taskgraph"
+    tg.mkdir(parents=True)
+
+    repos = local_config.discover_tracked_repos(fxci, tmp_path)
+    assert repos == [{"name": "taskcluster/taskgraph", "path": str(tg)}]
+
+
 # ---------------------------------------------------------------------------
 # _pick_repo
 # ---------------------------------------------------------------------------

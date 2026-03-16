@@ -92,9 +92,13 @@ def discover_tracked_repos(fxci_config_repo, search_root):
     repos = []
     for slug in sorted(slugs):
         org, name = slug.split("/", 1)
-        candidate = search_root / org / name
-        if candidate.is_dir():
-            repos.append({"name": slug, "path": str(candidate)})
+        for dirpath, dirnames, _ in os.walk(search_root):
+            dirnames[:] = [
+                d for d in dirnames if d not in _SKIP_DIRS and not d.startswith(".")
+            ]
+            if Path(dirpath).name == org and name in dirnames:
+                repos.append({"name": slug, "path": str(Path(dirpath) / name)})
+                break
     return repos
 
 
