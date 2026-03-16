@@ -23,9 +23,13 @@ ignore = [
   "COM",    # trailing commas — handled by ruff format
   "CPY",    # copyright headers
   "ARG001", # unused function args — required by hook/mock interfaces
-  "S101",   # assert — standard in tests
-  "S108",   # /tmp in tests is a mock value, not a real temp file
   "S603",   # subprocess with trusted input
   "S607",   # partial executable path — intentional (git, gh, cargo on PATH)
   "ERA001", # section header comments look like commented-out code
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = [
+  "S101", # assert — standard in tests
+  "S108", # /tmp in tests is a mock value, not a real temp file
 ]
