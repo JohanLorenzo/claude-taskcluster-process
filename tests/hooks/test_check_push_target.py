@@ -74,5 +74,5 @@ def test_push_defaults_to_origin_non_fork():
             "git@github.com:taskcluster/taskgraph.git", "false"
         ),
     ):
-        allowed, reason = check({"command": "git push"}, cwd="/tmp")
+        allowed, _ = check({"command": "git push"}, cwd="/tmp")
     assert not allowed

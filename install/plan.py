@@ -101,7 +101,7 @@ def apply_changes(plan):
     print("\nDone.")
     if (
         subprocess.run(
-            ["git", "remote", "get-url", "origin"], capture_output=True
+            ["git", "remote", "get-url", "origin"], capture_output=True, check=False
         ).returncode
         == 0
     ):

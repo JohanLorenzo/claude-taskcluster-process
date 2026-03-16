@@ -24,6 +24,7 @@ def check(tool_input, cwd=None):
             "warnings",
         ],
         capture_output=True,
+        check=False,
         text=True,
         cwd=work_dir,
     )

@@ -1,6 +1,3 @@
-import os
-from pathlib import Path
-
 from .constants import REPO_ROOT, RULES_DIR
 from .utils import unified_diff
 
@@ -14,7 +11,7 @@ def compute_symlink_ops():
         if not target.exists() and not target.is_symlink():
             ops.append(("create", src, target))
         elif target.is_symlink():
-            current = Path(os.readlink(target))
+            current = target.readlink()
             if current.resolve() == src_resolved:
                 ops.append(("noop", src, target))
             else:
@@ -36,7 +33,7 @@ def stale_symlink_warnings():
     if not RULES_DIR.is_dir():
         return []
     return [
-        f"WARNING: Stale symlink: {link} → {os.readlink(link)}"
+        f"WARNING: Stale symlink: {link} → {link.readlink()}"
         for link in RULES_DIR.glob("*.md")
         if link.is_symlink() and not link.resolve().exists()
     ]

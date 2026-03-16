@@ -16,12 +16,17 @@ dev = [
 target-version = "py310"
 
 [tool.ruff.lint]
-select = [
-  "E",   # pycodestyle errors
-  "F",   # pyflakes
-  "I",   # isort
-  "UP",  # pyupgrade
-  "B",   # flake8-bugbear
-  "C4",  # flake8-comprehensions
-  "SIM", # flake8-simplify
+select = ["ALL"]
+ignore = [
+  "D",      # pydocstrings — we don't write docstrings
+  "ANN",    # type annotations — not required here
+  "COM",    # trailing commas — handled by ruff format
+  "CPY",    # copyright headers
+  "T201",   # print() is used intentionally throughout
+  "ARG001", # unused function args — required by hook/mock interfaces
+  "S101",   # assert — standard in tests
+  "S108",   # /tmp in tests is a mock value, not a real temp file
+  "S603",   # subprocess with trusted input
+  "S607",   # partial executable path — intentional (git, gh, cargo on PATH)
+  "ERA001", # section header comments look like commented-out code
 ]

@@ -7,6 +7,7 @@ import install
 from install import local_config, preflight, settings, symlinks
 from install import plan as install_plan
 from install.plan import Plan
+from install.tools import check_tools
 
 
 def _write_json(path, data):
@@ -250,16 +251,12 @@ def test_apply_changes_orchestrates_all_steps(tmp_path):
 
 def test_check_tools_all_present():
     with patch("shutil.which", return_value="/usr/bin/something"):
-        from install.tools import check_tools
-
         check_tools()
 
 
 def test_check_tools_required_missing_exits():
     def fake_which(tool):
         return None if tool == "git" else "/usr/bin/" + tool
-
-    from install.tools import check_tools
 
     with patch("shutil.which", side_effect=fake_which), pytest.raises(SystemExit):
         check_tools()
@@ -268,8 +265,6 @@ def test_check_tools_required_missing_exits():
 def test_check_tools_optional_missing_continues(capsys):
     def fake_which(tool):
         return None if tool == "cargo" else "/usr/bin/" + tool
-
-    from install.tools import check_tools
 
     with patch("shutil.which", side_effect=fake_which):
         check_tools()

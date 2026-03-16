@@ -10,6 +10,7 @@ def _get_base_branch(cwd):
     result = subprocess.run(
         ["gh", "pr", "view", "--json", "baseRefName", "--jq", ".baseRefName"],
         capture_output=True,
+        check=False,
         text=True,
         cwd=cwd,
     )
@@ -37,6 +38,7 @@ def _is_ancestor(remote, base_branch, cwd):
     result = subprocess.run(
         ["git", "-C", cwd, "merge-base", "--is-ancestor", ref, "HEAD"],
         capture_output=True,
+        check=False,
         text=True,
     )
     return result.returncode == 0

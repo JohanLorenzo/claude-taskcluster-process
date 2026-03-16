@@ -22,6 +22,7 @@ def _get_remote_url(remote, cwd):
     result = subprocess.run(
         ["git", "-C", cwd, "remote", "get-url", remote],
         capture_output=True,
+        check=False,
         text=True,
     )
     if result.returncode != 0:
@@ -38,6 +39,7 @@ def _is_fork(org_repo):
     result = subprocess.run(
         ["gh", "repo", "view", org_repo, "--json", "isFork", "--jq", ".isFork"],
         capture_output=True,
+        check=False,
         text=True,
     )
     if result.returncode != 0:
