@@ -4,7 +4,7 @@ import sys
 from dataclasses import dataclass, field
 
 from .constants import LOCAL_CONFIG_FILE, RULES_DIR, SETTINGS_FILE
-from .local_config import compute_local_config_update, generate_local_config
+from .local_config import compute_local_config_update
 from .preflight import check_preflight_warnings
 from .settings import (
     compute_new_settings,
@@ -13,7 +13,6 @@ from .settings import (
     settings_diff,
 )
 from .symlinks import compute_symlink_ops, print_symlink_ops
-from .tools import check_tools
 
 
 @dataclass
@@ -31,7 +30,7 @@ class Plan:
         return bool(self.local_config_diff or self.settings_diff or self.actionable_ops)
 
 
-def _plan_changes():
+def plan_changes():
     current_settings = load_settings()
     hooks_config = load_hooks_config()
     symlink_ops = compute_symlink_ops()
@@ -109,18 +108,3 @@ def apply_changes(plan):
         print(
             "Note: old ~/.claude/hooks/*.sh scripts can be removed if no longer needed."
         )
-
-
-def main():
-    check_tools()
-    if not LOCAL_CONFIG_FILE.exists():
-        generate_local_config()
-    plan = _plan_changes()
-    preview_changes(plan)
-    if not plan.has_changes:
-        print("\nAlready up to date.")
-        sys.exit(0)
-    if input("\nApply changes? [y/N]: ").strip().lower() != "y":
-        print("No changes made.")
-        sys.exit(0)
-    apply_changes(plan)

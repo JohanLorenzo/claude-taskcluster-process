@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 import pytest
 
+import install
 from install import local_config, preflight, settings, symlinks
 from install import plan as install_plan
 from install.plan import Plan
@@ -316,12 +317,11 @@ def test_main_exits_without_prompt_when_no_changes(tmp_path, capsys):
         patch.object(preflight, "RULES_DIR", rules_target),
         patch.object(preflight, "SETTINGS_FILE", settings_file),
         patch.object(preflight, "CLAUDE_DIR", tmp_path),
-        patch.object(install_plan, "LOCAL_CONFIG_FILE", local_config_file),
-        patch.object(install_plan, "SETTINGS_FILE", settings_file),
+        patch.object(install, "LOCAL_CONFIG_FILE", local_config_file),
         patch("builtins.input", side_effect=AssertionError("should not prompt")),
         pytest.raises(SystemExit) as exc,
     ):
-        install_plan.main()
+        install.main()
 
     assert exc.value.code == 0
     assert "up to date" in capsys.readouterr().out
