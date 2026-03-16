@@ -67,6 +67,118 @@ def test_hooks_config_resolves_relative_paths(tmp_path):
 
 
 # ---------------------------------------------------------------------------
+# _parse_local_config
+# ---------------------------------------------------------------------------
+
+_LOCAL_CONFIG_CONTENT = """\
+# Local configuration — DO NOT COMMIT
+
+## Required paths
+taskgraph_repo: /tg/taskcluster/taskgraph
+fxci_config_repo: /tg/mozilla-releng/fxci-config
+
+## Tracked repositories
+repos:
+  - name: taskcluster/taskgraph
+    path: /tg/taskcluster/taskgraph
+  - name: mozilla-releng/fxci-config
+    path: /tg/mozilla-releng/fxci-config
+"""
+
+
+def test_parse_local_config_reads_required_paths(tmp_path):
+    config_file = tmp_path / "CLAUDE.local.md"
+    config_file.write_text(_LOCAL_CONFIG_CONTENT)
+    result = inst._parse_local_config(config_file)
+    assert result["taskgraph_repo"] == Path("/tg/taskcluster/taskgraph")
+    assert result["fxci_config_repo"] == Path("/tg/mozilla-releng/fxci-config")
+
+
+def test_parse_local_config_reads_repo_paths(tmp_path):
+    config_file = tmp_path / "CLAUDE.local.md"
+    config_file.write_text(_LOCAL_CONFIG_CONTENT)
+    result = inst._parse_local_config(config_file)
+    assert "/tg/taskcluster/taskgraph" in result["repo_paths"]
+    assert "/tg/mozilla-releng/fxci-config" in result["repo_paths"]
+
+
+def test_parse_local_config_missing_file_returns_empty(tmp_path):
+    result = inst._parse_local_config(tmp_path / "missing.md")
+    assert result["taskgraph_repo"] is None
+    assert result["fxci_config_repo"] is None
+    assert result["repo_paths"] == []
+
+
+def test_parse_local_config_no_fxci_config(tmp_path):
+    config_file = tmp_path / "CLAUDE.local.md"
+    config_file.write_text("taskgraph_repo: /tg/taskcluster/taskgraph\n")
+    result = inst._parse_local_config(config_file)
+    assert result["taskgraph_repo"] == Path("/tg/taskcluster/taskgraph")
+    assert result["fxci_config_repo"] is None
+
+
+# ---------------------------------------------------------------------------
+# _compute_local_config_update
+# ---------------------------------------------------------------------------
+
+
+def test_compute_local_config_update_detects_new_repo(tmp_path):
+    fxci = tmp_path / "mozilla-releng" / "fxci-config"
+    fxci.mkdir(parents=True)
+    (fxci / "projects.yml").write_text(
+        "tg:\n  repo: https://github.com/taskcluster/taskgraph\n"
+        "ss:\n  repo: https://github.com/mozilla-releng/scriptworker-scripts\n"
+    )
+    tg = tmp_path / "taskcluster" / "taskgraph"
+    tg.mkdir(parents=True)
+    ss = tmp_path / "mozilla-releng" / "scriptworker-scripts"
+    ss.mkdir(parents=True)
+
+    config_file = tmp_path / "CLAUDE.local.md"
+    # Old content: only taskgraph listed, scriptworker-scripts not yet discovered
+    config_file.write_text(
+        f"taskgraph_repo: {tg}\nfxci_config_repo: {fxci}\n"
+        f"\n## Tracked repositories\nrepos:\n"
+        f"  - name: taskcluster/taskgraph\n    path: {tg}\n"
+    )
+
+    with patch.object(inst, "LOCAL_CONFIG_FILE", config_file):
+        diff, new_content = inst._compute_local_config_update()
+
+    assert diff  # there is a diff
+    assert "scriptworker-scripts" in new_content
+
+
+def test_compute_local_config_update_no_diff_when_current(tmp_path):
+    fxci = tmp_path / "mozilla-releng" / "fxci-config"
+    fxci.mkdir(parents=True)
+    (fxci / "projects.yml").write_text(
+        "tg:\n  repo: https://github.com/taskcluster/taskgraph\n"
+    )
+    tg = tmp_path / "taskcluster" / "taskgraph"
+    tg.mkdir(parents=True)
+
+    repos = [{"name": "taskcluster/taskgraph", "path": str(tg)}]
+    current_content = inst._render_local_config(tg, fxci, repos)
+    config_file = tmp_path / "CLAUDE.local.md"
+    config_file.write_text(current_content)
+
+    with patch.object(inst, "LOCAL_CONFIG_FILE", config_file):
+        diff, _ = inst._compute_local_config_update()
+
+    assert not diff
+
+
+def test_compute_local_config_update_no_taskgraph_repo_returns_empty(tmp_path):
+    config_file = tmp_path / "CLAUDE.local.md"
+    config_file.write_text("# no taskgraph_repo set\n")
+    with patch.object(inst, "LOCAL_CONFIG_FILE", config_file):
+        diff, new_content = inst._compute_local_config_update()
+    assert diff == []
+    assert new_content is None
+
+
+# ---------------------------------------------------------------------------
 # _load_settings
 # ---------------------------------------------------------------------------
 
@@ -262,8 +374,24 @@ def test_main_exits_without_prompt_when_no_changes(tmp_path, capsys):
     settings_file = _make_settings(
         tmp_path, extra={"hooks": {"PreToolUse": [], "PostToolUse": []}}
     )
+    # Local config already reflects the current discovery state
+    tg = tmp_path / "taskcluster" / "taskgraph"
+    tg.mkdir(parents=True)
     local_config = tmp_path / "CLAUDE.local.md"
-    local_config.write_text("taskgraph_repo: /tg\n")
+    repos = [{"name": "taskcluster/taskgraph", "path": str(tg)}]
+    local_config.write_text(inst._render_local_config(tg, None, repos))
+    # Settings must also already include additionalDirectories from local config
+    settings_file = _make_settings(
+        tmp_path,
+        extra={
+            "hooks": {"PreToolUse": [], "PostToolUse": []},
+            "permissions": {
+                "allow": [],
+                "defaultMode": "plan",
+                "additionalDirectories": [str(tg)],
+            },
+        },
+    )
     rules_src = tmp_path / "rules"
     rules_src.mkdir()
     rules_target = tmp_path / "claude_rules"

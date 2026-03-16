@@ -76,28 +76,64 @@ def _load_settings():
         sys.exit(1)
 
 
-def _read_local_config_repos():
-    if not LOCAL_CONFIG_FILE.exists():
-        return []
-    repos = []
+def _parse_local_config(path):
+    result = {"taskgraph_repo": None, "fxci_config_repo": None, "repo_paths": []}
+    if not path.exists():
+        return result
     in_repos = False
-    with LOCAL_CONFIG_FILE.open() as f:
-        for line in f:
-            stripped = line.strip()
-            if stripped == "repos:":
-                in_repos = True
-                continue
-            if in_repos:
-                if stripped.startswith("path:"):
-                    repos.append(stripped[len("path:") :].strip())
-                elif (
-                    stripped
-                    and not stripped.startswith("#")
-                    and ":" in stripped
-                    and not stripped.startswith("-")
-                ):
-                    in_repos = False
-    return repos
+    for line in path.read_text().splitlines():
+        stripped = line.strip()
+        if stripped.startswith("taskgraph_repo:"):
+            result["taskgraph_repo"] = Path(stripped[len("taskgraph_repo:") :].strip())
+        elif stripped.startswith("fxci_config_repo:"):
+            result["fxci_config_repo"] = Path(
+                stripped[len("fxci_config_repo:") :].strip()
+            )
+        elif stripped == "repos:":
+            in_repos = True
+        elif in_repos:
+            if stripped.startswith("path:"):
+                result["repo_paths"].append(stripped[len("path:") :].strip())
+            elif (
+                stripped
+                and not stripped.startswith("#")
+                and ":" in stripped
+                and not stripped.startswith("-")
+            ):
+                in_repos = False
+    return result
+
+
+def _read_local_config_repos():
+    return _parse_local_config(LOCAL_CONFIG_FILE)["repo_paths"]
+
+
+def _compute_local_config_update():
+    config = _parse_local_config(LOCAL_CONFIG_FILE)
+    taskgraph_repo = config["taskgraph_repo"]
+    fxci_config_repo = config["fxci_config_repo"]
+    if not taskgraph_repo:
+        return [], None
+    search_root = taskgraph_repo.parent.parent
+    tg_slug = "/".join(taskgraph_repo.parts[-2:])
+    repos = [{"name": tg_slug, "path": str(taskgraph_repo)}]
+    if fxci_config_repo:
+        existing_names = {r["name"] for r in repos}
+        for r in _discover_tracked_repos(fxci_config_repo, search_root):
+            if r["name"] not in existing_names:
+                repos.append(r)
+                existing_names.add(r["name"])
+    new_content = _render_local_config(taskgraph_repo, fxci_config_repo, repos)
+    old_content = LOCAL_CONFIG_FILE.read_text()
+    diff = list(
+        difflib.unified_diff(
+            old_content.splitlines(keepends=True),
+            new_content.splitlines(keepends=True),
+            fromfile=str(LOCAL_CONFIG_FILE),
+            tofile=str(LOCAL_CONFIG_FILE) + " (new)",
+        )
+    )
+    return diff, new_content
 
 
 def _compute_new_settings(old_settings, hooks_config):
@@ -298,9 +334,14 @@ def _generate_local_config():
     taskgraph_candidates, fxci_candidates = _find_repo_candidates(root)
     taskgraph_repo = _pick_repo(taskgraph_candidates, "taskgraph", required=True)
     fxci_config_repo = _pick_repo(fxci_candidates, "fxci-config", required=False)
-    repos = [{"name": "taskcluster/taskgraph", "path": str(taskgraph_repo)}]
+    tg_slug = "/".join(taskgraph_repo.parts[-2:])
+    repos = [{"name": tg_slug, "path": str(taskgraph_repo)}]
     if fxci_config_repo:
-        repos.extend(_discover_tracked_repos(fxci_config_repo, root))
+        existing_names = {r["name"] for r in repos}
+        for r in _discover_tracked_repos(fxci_config_repo, root):
+            if r["name"] not in existing_names:
+                repos.append(r)
+                existing_names.add(r["name"])
     content = _render_local_config(taskgraph_repo, fxci_config_repo, repos)
     print("\n--- Generated CLAUDE.local.md ---")
     print(content)
@@ -361,6 +402,13 @@ def main():
     if errors:
         sys.exit(1)
 
+    local_config_diff, new_local_content = _compute_local_config_update()
+    if local_config_diff:
+        print(f"\n--- {LOCAL_CONFIG_FILE} ---")
+        print("".join(local_config_diff))
+    else:
+        print(f"\n= no change: {LOCAL_CONFIG_FILE}")
+
     diff = _settings_diff(settings, new_settings)
     if diff:
         print(f"\n--- {SETTINGS_FILE} ---")
@@ -373,13 +421,17 @@ def main():
         _print_symlink_ops(symlink_ops)
 
     actionable_ops = [op for op in symlink_ops if op[0] != "noop"]
-    if not diff and not actionable_ops:
+    if not local_config_diff and not diff and not actionable_ops:
         print("\nAlready up to date.")
         sys.exit(0)
 
     if input("\nApply changes? [y/N]: ").strip().lower() != "y":
         print("No changes made.")
         sys.exit(0)
+
+    if local_config_diff:
+        LOCAL_CONFIG_FILE.write_text(new_local_content)
+        print(f"Updated: {LOCAL_CONFIG_FILE}")
 
     SETTINGS_FILE.write_text(json.dumps(new_settings, indent=2) + "\n")
     print(f"Updated: {SETTINGS_FILE}")
