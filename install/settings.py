@@ -3,10 +3,10 @@ import json
 import sys
 
 from .constants import HOOKS_CONFIG_FILE, REPO_ROOT, SETTINGS_FILE
-from .utils import _unified_diff
+from .utils import unified_diff
 
 
-def _load_hooks_config():
+def load_hooks_config():
     with HOOKS_CONFIG_FILE.open() as f:
         raw = json.load(f)
 
@@ -20,7 +20,7 @@ def _load_hooks_config():
     return {event: resolve_hooks(entries) for event, entries in raw.items()}
 
 
-def _load_settings():
+def load_settings():
     if not SETTINGS_FILE.exists():
         print(f"ERROR: {SETTINGS_FILE} not found.", file=sys.stderr)
         sys.exit(1)
@@ -32,7 +32,7 @@ def _load_settings():
         sys.exit(1)
 
 
-def _compute_new_settings(old_settings, hooks_config, repo_paths):
+def compute_new_settings(old_settings, hooks_config, repo_paths):
     new_settings = copy.deepcopy(old_settings)
     new_settings["hooks"] = hooks_config
     if repo_paths:
@@ -41,8 +41,8 @@ def _compute_new_settings(old_settings, hooks_config, repo_paths):
     return new_settings
 
 
-def _settings_diff(old, new):
-    return _unified_diff(
+def settings_diff(old, new):
+    return unified_diff(
         json.dumps(old, indent=2),
         json.dumps(new, indent=2),
         str(SETTINGS_FILE),

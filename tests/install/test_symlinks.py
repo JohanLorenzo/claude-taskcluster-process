@@ -18,7 +18,7 @@ def test_symlink_ops_new_symlink(tmp_path):
         patch.object(symlinks, "REPO_ROOT", tmp_path),
         patch.object(symlinks, "RULES_DIR", rules_target),
     ):
-        ops = symlinks._compute_symlink_ops()
+        ops = symlinks.compute_symlink_ops()
 
     assert len(ops) == 1
     op = ops[0]
@@ -40,7 +40,7 @@ def test_symlink_ops_already_correct(tmp_path):
         patch.object(symlinks, "REPO_ROOT", tmp_path),
         patch.object(symlinks, "RULES_DIR", rules_target),
     ):
-        ops = symlinks._compute_symlink_ops()
+        ops = symlinks.compute_symlink_ops()
 
     assert ops[0][0] == "noop"
 
@@ -61,7 +61,7 @@ def test_symlink_ops_update_symlink(tmp_path):
         patch.object(symlinks, "REPO_ROOT", tmp_path),
         patch.object(symlinks, "RULES_DIR", rules_target),
     ):
-        ops = symlinks._compute_symlink_ops()
+        ops = symlinks.compute_symlink_ops()
 
     assert ops[0][0] == "update"
 
@@ -79,7 +79,7 @@ def test_symlink_ops_replace_regular_file(tmp_path):
         patch.object(symlinks, "REPO_ROOT", tmp_path),
         patch.object(symlinks, "RULES_DIR", rules_target),
     ):
-        ops = symlinks._compute_symlink_ops()
+        ops = symlinks.compute_symlink_ops()
 
     assert ops[0][0] == "replace_file"
 
@@ -94,7 +94,7 @@ def test_replace_file_warnings_returns_warning_per_op(tmp_path):
     target = tmp_path / "target.md"
     src.write_text("x")
     target.write_text("y")
-    warnings = symlinks._replace_file_warnings([("replace_file", src, target)])
+    warnings = symlinks.replace_file_warnings([("replace_file", src, target)])
     assert len(warnings) == 1
     assert "regular file" in warnings[0]
 
@@ -102,8 +102,8 @@ def test_replace_file_warnings_returns_warning_per_op(tmp_path):
 def test_replace_file_warnings_empty_for_other_ops(tmp_path):
     src = tmp_path / "src.md"
     target = tmp_path / "target.md"
-    assert symlinks._replace_file_warnings([("create", src, target)]) == []
-    assert symlinks._replace_file_warnings([("noop", src, target)]) == []
+    assert symlinks.replace_file_warnings([("create", src, target)]) == []
+    assert symlinks.replace_file_warnings([("noop", src, target)]) == []
 
 
 # ---------------------------------------------------------------------------
@@ -117,13 +117,13 @@ def test_stale_symlink_warnings_detects_broken_link(tmp_path):
     stale = rules_dir / "gone.md"
     stale.symlink_to(tmp_path / "nonexistent.md")
     with patch.object(symlinks, "RULES_DIR", rules_dir):
-        warnings = symlinks._stale_symlink_warnings()
+        warnings = symlinks.stale_symlink_warnings()
     assert any("Stale" in w for w in warnings)
 
 
 def test_stale_symlink_warnings_empty_when_no_rules_dir(tmp_path):
     with patch.object(symlinks, "RULES_DIR", tmp_path / "missing"):
-        assert symlinks._stale_symlink_warnings() == []
+        assert symlinks.stale_symlink_warnings() == []
 
 
 # ---------------------------------------------------------------------------

@@ -19,14 +19,14 @@ def test_old_shell_hook_warnings_notes_replaceable_hooks(tmp_path):
         patch.object(preflight, "CLAUDE_DIR", tmp_path),
         patch.object(preflight, "REPO_ROOT", repo_root),
     ):
-        warnings = preflight._old_shell_hook_warnings()
+        warnings = preflight.old_shell_hook_warnings()
 
     assert any("block-no-verify.sh" in w for w in warnings)
 
 
 def test_old_shell_hook_warnings_empty_when_no_hooks_dir(tmp_path):
     with patch.object(preflight, "CLAUDE_DIR", tmp_path):
-        assert preflight._old_shell_hook_warnings() == []
+        assert preflight.old_shell_hook_warnings() == []
 
 
 # ---------------------------------------------------------------------------
@@ -38,5 +38,5 @@ def test_preflight_rules_dir_is_file(tmp_path):
     rules_as_file = tmp_path / "rules_dir"
     rules_as_file.write_text("oops")
     with patch.object(preflight, "RULES_DIR", rules_as_file):
-        _, errors = preflight._check_preflight_warnings([])
+        _, errors = preflight.check_preflight_warnings([])
     assert any("not a directory" in e for e in errors)

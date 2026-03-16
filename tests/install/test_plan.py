@@ -5,7 +5,7 @@ import pytest
 
 from install import local_config, preflight, settings, symlinks
 from install import plan as install_plan
-from install.plan import _Plan
+from install.plan import Plan
 
 
 def _write_json(path, data):
@@ -39,7 +39,7 @@ def _make_settings(tmp_path, extra=None):
 
 
 def test_plan_has_changes_true_when_diff():
-    plan = _Plan(
+    plan = Plan(
         local_config_diff=["-old\n", "+new\n"],
         new_local_content="new",
         settings_diff=[],
@@ -51,7 +51,7 @@ def test_plan_has_changes_true_when_diff():
 
 
 def test_plan_has_changes_false_when_empty():
-    plan = _Plan(
+    plan = Plan(
         local_config_diff=[],
         new_local_content=None,
         settings_diff=[],
@@ -66,7 +66,7 @@ def test_plan_has_changes_true_when_actionable_ops(tmp_path):
     src = tmp_path / "foo.md"
     src.write_text("x")
     target = tmp_path / "link.md"
-    plan = _Plan(
+    plan = Plan(
         local_config_diff=[],
         new_local_content=None,
         settings_diff=[],
@@ -83,7 +83,7 @@ def test_plan_has_changes_true_when_actionable_ops(tmp_path):
 
 
 def test_preview_changes_prints_no_change_when_up_to_date(capsys, tmp_path):
-    plan = _Plan(
+    plan = Plan(
         local_config_diff=[],
         new_local_content=None,
         settings_diff=[],
@@ -95,13 +95,13 @@ def test_preview_changes_prints_no_change_when_up_to_date(capsys, tmp_path):
         patch.object(install_plan, "LOCAL_CONFIG_FILE", tmp_path / "CLAUDE.local.md"),
         patch.object(install_plan, "SETTINGS_FILE", tmp_path / "settings.json"),
     ):
-        install_plan._preview_changes(plan)
+        install_plan.preview_changes(plan)
     out = capsys.readouterr().out
     assert "no change" in out
 
 
 def test_preview_changes_prints_warnings(capsys, tmp_path):
-    plan = _Plan(
+    plan = Plan(
         local_config_diff=[],
         new_local_content=None,
         settings_diff=[],
@@ -114,7 +114,7 @@ def test_preview_changes_prints_warnings(capsys, tmp_path):
         patch.object(install_plan, "LOCAL_CONFIG_FILE", tmp_path / "CLAUDE.local.md"),
         patch.object(install_plan, "SETTINGS_FILE", tmp_path / "settings.json"),
     ):
-        install_plan._preview_changes(plan)
+        install_plan.preview_changes(plan)
     assert "WARNING: something" in capsys.readouterr().out
 
 
@@ -126,7 +126,7 @@ def test_preview_changes_prints_warnings(capsys, tmp_path):
 def test_write_files_writes_settings(tmp_path):
     settings_file = _make_settings(tmp_path)
     new_settings = {"model": "updated"}
-    plan = _Plan(
+    plan = Plan(
         local_config_diff=[],
         new_local_content=None,
         settings_diff=[],
@@ -135,14 +135,14 @@ def test_write_files_writes_settings(tmp_path):
         actionable_ops=[],
     )
     with patch.object(install_plan, "SETTINGS_FILE", settings_file):
-        install_plan._write_files(plan)
+        install_plan.write_files(plan)
     assert json.loads(settings_file.read_text()) == new_settings
 
 
 def test_write_files_writes_local_config_when_diff(tmp_path):
     settings_file = _make_settings(tmp_path)
     local_config_file = tmp_path / "CLAUDE.local.md"
-    plan = _Plan(
+    plan = Plan(
         local_config_diff=["-old\n", "+new\n"],
         new_local_content="new content",
         settings_diff=[],
@@ -154,14 +154,14 @@ def test_write_files_writes_local_config_when_diff(tmp_path):
         patch.object(install_plan, "LOCAL_CONFIG_FILE", local_config_file),
         patch.object(install_plan, "SETTINGS_FILE", settings_file),
     ):
-        install_plan._write_files(plan)
+        install_plan.write_files(plan)
     assert local_config_file.read_text() == "new content"
 
 
 def test_write_files_skips_local_config_when_no_diff(tmp_path):
     settings_file = _make_settings(tmp_path)
     local_config_file = tmp_path / "CLAUDE.local.md"
-    plan = _Plan(
+    plan = Plan(
         local_config_diff=[],
         new_local_content=None,
         settings_diff=[],
@@ -173,7 +173,7 @@ def test_write_files_skips_local_config_when_no_diff(tmp_path):
         patch.object(install_plan, "LOCAL_CONFIG_FILE", local_config_file),
         patch.object(install_plan, "SETTINGS_FILE", settings_file),
     ):
-        install_plan._write_files(plan)
+        install_plan.write_files(plan)
     assert not local_config_file.exists()
 
 
@@ -186,7 +186,7 @@ def test_apply_symlink_op_create(tmp_path):
     src = tmp_path / "src.md"
     src.write_text("x")
     target = tmp_path / "link.md"
-    install_plan._apply_symlink_op(("create", src, target))
+    install_plan.apply_symlink_op(("create", src, target))
     assert target.is_symlink()
     assert target.resolve() == src.resolve()
 
@@ -198,7 +198,7 @@ def test_apply_symlink_op_update_replaces_existing_symlink(tmp_path):
     old.write_text("old")
     target = tmp_path / "link.md"
     target.symlink_to(old)
-    install_plan._apply_symlink_op(("update", src, target))
+    install_plan.apply_symlink_op(("update", src, target))
     assert target.resolve() == src.resolve()
 
 
@@ -207,7 +207,7 @@ def test_apply_symlink_op_replace_file(tmp_path):
     src.write_text("new")
     target = tmp_path / "target.md"
     target.write_text("old")
-    install_plan._apply_symlink_op(("replace_file", src, target))
+    install_plan.apply_symlink_op(("replace_file", src, target))
     assert target.is_symlink()
     assert target.resolve() == src.resolve()
 
@@ -225,7 +225,7 @@ def test_apply_changes_orchestrates_all_steps(tmp_path):
     rules_target = tmp_path / "claude_rules"
     rules_target.mkdir()
     link = rules_target / "foo.md"
-    plan = _Plan(
+    plan = Plan(
         local_config_diff=[],
         new_local_content=None,
         settings_diff=[],
@@ -237,7 +237,7 @@ def test_apply_changes_orchestrates_all_steps(tmp_path):
         patch.object(install_plan, "SETTINGS_FILE", settings_file),
         patch.object(install_plan, "RULES_DIR", rules_target),
     ):
-        install_plan._apply_changes(plan)
+        install_plan.apply_changes(plan)
     assert json.loads(settings_file.read_text()) == {"model": "updated"}
     assert link.is_symlink()
 
@@ -249,29 +249,29 @@ def test_apply_changes_orchestrates_all_steps(tmp_path):
 
 def test_check_tools_all_present():
     with patch("shutil.which", return_value="/usr/bin/something"):
-        from install.tools import _check_tools
+        from install.tools import check_tools
 
-        _check_tools()
+        check_tools()
 
 
 def test_check_tools_required_missing_exits():
     def fake_which(tool):
         return None if tool == "git" else "/usr/bin/" + tool
 
-    from install.tools import _check_tools
+    from install.tools import check_tools
 
     with patch("shutil.which", side_effect=fake_which), pytest.raises(SystemExit):
-        _check_tools()
+        check_tools()
 
 
 def test_check_tools_optional_missing_continues(capsys):
     def fake_which(tool):
         return None if tool == "cargo" else "/usr/bin/" + tool
 
-    from install.tools import _check_tools
+    from install.tools import check_tools
 
     with patch("shutil.which", side_effect=fake_which):
-        _check_tools()
+        check_tools()
 
     out = capsys.readouterr().out
     assert "cargo" in out
@@ -289,7 +289,7 @@ def test_main_exits_without_prompt_when_no_changes(tmp_path, capsys):
     tg.mkdir(parents=True)
     local_config_file = tmp_path / "CLAUDE.local.md"
     repos = [{"name": "taskcluster/taskgraph", "path": str(tg)}]
-    local_config_file.write_text(local_config._render_local_config(tg, None, repos))
+    local_config_file.write_text(local_config.render_local_config(tg, None, repos))
     settings_file = _make_settings(
         tmp_path,
         extra={

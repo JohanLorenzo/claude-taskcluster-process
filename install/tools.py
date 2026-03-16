@@ -14,7 +14,7 @@ OPTIONAL_TOOLS = {
 }
 
 
-def _check_tools():
+def check_tools():
     errors = []
     warnings = []
     for tool, instructions in REQUIRED_TOOLS.items():

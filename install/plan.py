@@ -4,20 +4,20 @@ import sys
 from dataclasses import dataclass, field
 
 from .constants import LOCAL_CONFIG_FILE, RULES_DIR, SETTINGS_FILE
-from .local_config import _compute_local_config_update, _generate_local_config
-from .preflight import _check_preflight_warnings
+from .local_config import compute_local_config_update, generate_local_config
+from .preflight import check_preflight_warnings
 from .settings import (
-    _compute_new_settings,
-    _load_hooks_config,
-    _load_settings,
-    _settings_diff,
+    compute_new_settings,
+    load_hooks_config,
+    load_settings,
+    settings_diff,
 )
-from .symlinks import _compute_symlink_ops, _print_symlink_ops
-from .tools import _check_tools
+from .symlinks import compute_symlink_ops, print_symlink_ops
+from .tools import check_tools
 
 
 @dataclass
-class _Plan:
+class Plan:
     local_config_diff: list
     new_local_content: str | None
     settings_diff: list
@@ -32,23 +32,23 @@ class _Plan:
 
 
 def _plan_changes():
-    settings = _load_settings()
-    hooks_config = _load_hooks_config()
-    symlink_ops = _compute_symlink_ops()
-    warnings, errors = _check_preflight_warnings(symlink_ops)
+    current_settings = load_settings()
+    hooks_config = load_hooks_config()
+    symlink_ops = compute_symlink_ops()
+    warnings, errors = check_preflight_warnings(symlink_ops)
     for e in errors:
         print(e, file=sys.stderr)
     if errors:
         sys.exit(1)
-    local_config_diff, new_local_content, new_repos = _compute_local_config_update()
+    local_config_diff, new_local_content, new_repos = compute_local_config_update()
     new_repo_paths = [r["path"] for r in new_repos]
-    new_settings = _compute_new_settings(
-        settings, hooks_config, repo_paths=new_repo_paths
+    new_settings = compute_new_settings(
+        current_settings, hooks_config, repo_paths=new_repo_paths
     )
-    return _Plan(
+    return Plan(
         local_config_diff=local_config_diff,
         new_local_content=new_local_content,
-        settings_diff=_settings_diff(settings, new_settings),
+        settings_diff=settings_diff(current_settings, new_settings),
         new_settings=new_settings,
         symlink_ops=symlink_ops,
         actionable_ops=[op for op in symlink_ops if op[0] != "noop"],
@@ -56,7 +56,7 @@ def _plan_changes():
     )
 
 
-def _preview_changes(plan):
+def preview_changes(plan):
     for w in plan.warnings:
         print(w)
     for path, diff in [
@@ -70,10 +70,10 @@ def _preview_changes(plan):
             print(f"\n= no change: {path}")
     if plan.symlink_ops:
         print("\n--- rules/ symlinks ---")
-        _print_symlink_ops(plan.symlink_ops)
+        print_symlink_ops(plan.symlink_ops)
 
 
-def _write_files(plan):
+def write_files(plan):
     if plan.local_config_diff:
         LOCAL_CONFIG_FILE.write_text(plan.new_local_content)
         print(f"Updated: {LOCAL_CONFIG_FILE}")
@@ -81,7 +81,7 @@ def _write_files(plan):
     print(f"Updated: {SETTINGS_FILE}")
 
 
-def _apply_symlink_op(op):
+def apply_symlink_op(op):
     kind, src, target = op[0], op[1], op[2]
     if target.is_symlink() or target.exists():
         target.unlink()
@@ -93,11 +93,11 @@ def _apply_symlink_op(op):
 def _apply_symlinks(ops):
     RULES_DIR.mkdir(exist_ok=True)
     for op in ops:
-        _apply_symlink_op(op)
+        apply_symlink_op(op)
 
 
-def _apply_changes(plan):
-    _write_files(plan)
+def apply_changes(plan):
+    write_files(plan)
     _apply_symlinks(plan.actionable_ops)
     print("\nDone.")
     if (
@@ -112,15 +112,15 @@ def _apply_changes(plan):
 
 
 def main():
-    _check_tools()
+    check_tools()
     if not LOCAL_CONFIG_FILE.exists():
-        _generate_local_config()
+        generate_local_config()
     plan = _plan_changes()
-    _preview_changes(plan)
+    preview_changes(plan)
     if not plan.has_changes:
         print("\nAlready up to date.")
         sys.exit(0)
     if input("\nApply changes? [y/N]: ").strip().lower() != "y":
         print("No changes made.")
         sys.exit(0)
-    _apply_changes(plan)
+    apply_changes(plan)

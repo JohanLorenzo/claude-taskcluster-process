@@ -1,10 +1,10 @@
 import os
 
 from .constants import CLAUDE_DIR, REPO_ROOT, RULES_DIR, SETTINGS_FILE
-from .symlinks import _replace_file_warnings, _stale_symlink_warnings
+from .symlinks import replace_file_warnings, stale_symlink_warnings
 
 
-def _old_shell_hook_warnings():
+def old_shell_hook_warnings():
     old_hooks_dir = CLAUDE_DIR / "hooks"
     if not old_hooks_dir.is_dir():
         return []
@@ -16,11 +16,11 @@ def _old_shell_hook_warnings():
     ]
 
 
-def _check_preflight_warnings(ops):
+def check_preflight_warnings(ops):
     warnings = [
-        *_replace_file_warnings(ops),
-        *_old_shell_hook_warnings(),
-        *_stale_symlink_warnings(),
+        *replace_file_warnings(ops),
+        *old_shell_hook_warnings(),
+        *stale_symlink_warnings(),
     ]
     errors = []
     if SETTINGS_FILE.exists() and not os.access(SETTINGS_FILE, os.W_OK):

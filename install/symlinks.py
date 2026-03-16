@@ -2,10 +2,10 @@ import os
 from pathlib import Path
 
 from .constants import REPO_ROOT, RULES_DIR
-from .utils import _unified_diff
+from .utils import unified_diff
 
 
-def _compute_symlink_ops():
+def compute_symlink_ops():
     ops = []
     rules_src_dir = REPO_ROOT / "rules"
     for src in sorted(rules_src_dir.glob("*.md")):
@@ -24,7 +24,7 @@ def _compute_symlink_ops():
     return ops
 
 
-def _replace_file_warnings(ops):
+def replace_file_warnings(ops):
     return [
         f"WARNING: {op[2]} is a regular file (not a symlink) — will be replaced."
         for op in ops
@@ -32,7 +32,7 @@ def _replace_file_warnings(ops):
     ]
 
 
-def _stale_symlink_warnings():
+def stale_symlink_warnings():
     if not RULES_DIR.is_dir():
         return []
     return [
@@ -42,7 +42,7 @@ def _stale_symlink_warnings():
     ]
 
 
-def _print_symlink_ops(ops):
+def print_symlink_ops(ops):
     for op in ops:
         if op[0] == "create":
             print(f"  + new symlink: {op[2]} → {op[1]}")
@@ -51,7 +51,7 @@ def _print_symlink_ops(ops):
         elif op[0] == "replace_file":
             src_text = op[1].read_text()
             target_text = op[2].read_text()
-            diff = _unified_diff(target_text, src_text, str(op[2]), str(op[1]))
+            diff = unified_diff(target_text, src_text, str(op[2]), str(op[1]))
             if diff:
                 print(f"  ~ replace file with symlink: {op[2]}")
                 print("".join(diff[:40]))

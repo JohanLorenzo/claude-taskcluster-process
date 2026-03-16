@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 
 from .constants import LOCAL_CONFIG_FILE
-from .utils import _unified_diff
+from .utils import unified_diff
 
 _SKIP_DIRS = frozenset(
     {".venv", ".tox", "__pycache__", "site-packages", "node_modules"}
@@ -37,31 +37,28 @@ def _repo_root(path):
     return path
 
 
-def _matches_pyproject_name(text, name):
+def matches_pyproject_name(text, name):
     return f'name = "{name}"' in text or f"name = '{name}'" in text
 
 
-def _scan_pyprojects(root):
+def scan_pyprojects(root):
     taskgraph, fxci = [], []
     for pyproject in _find_files(root, "pyproject.toml"):
         try:
             text = pyproject.read_text()
         except OSError:
             continue
-        if _matches_pyproject_name(text, "taskgraph"):
+        if matches_pyproject_name(text, "taskgraph"):
             candidate = _repo_root(pyproject.parent)
             if candidate not in taskgraph:
                 taskgraph.append(candidate)
-        if (
-            _matches_pyproject_name(text, "fxci-config")
-            and pyproject.parent not in fxci
-        ):
+        if matches_pyproject_name(text, "fxci-config") and pyproject.parent not in fxci:
             fxci.append(pyproject.parent)
     return taskgraph, fxci
 
 
-def _find_repo_candidates(root):
-    taskgraph, fxci = _scan_pyprojects(root)
+def find_repo_candidates(root):
+    taskgraph, fxci = scan_pyprojects(root)
     for init in _find_files(root, "taskgraph/__init__.py"):
         candidate = _repo_root(init.parent.parent)
         if candidate not in taskgraph:
@@ -69,7 +66,7 @@ def _find_repo_candidates(root):
     return taskgraph, fxci
 
 
-def _parse_github_slugs(fxci_config_repo):
+def parse_github_slugs(fxci_config_repo):
     projects_file = fxci_config_repo / "projects.yml"
     try:
         text = projects_file.read_text()
@@ -87,8 +84,8 @@ def _parse_github_slugs(fxci_config_repo):
     return slugs
 
 
-def _discover_tracked_repos(fxci_config_repo, search_root):
-    slugs = _parse_github_slugs(fxci_config_repo)
+def discover_tracked_repos(fxci_config_repo, search_root):
+    slugs = parse_github_slugs(fxci_config_repo)
     repos = []
     for slug in sorted(slugs):
         org, name = slug.split("/", 1)
@@ -98,19 +95,19 @@ def _discover_tracked_repos(fxci_config_repo, search_root):
     return repos
 
 
-def _build_repos_list(taskgraph_repo, fxci_config_repo, search_root):
+def build_repos_list(taskgraph_repo, fxci_config_repo, search_root):
     tg_slug = "/".join(taskgraph_repo.parts[-2:])
     repos = [{"name": tg_slug, "path": str(taskgraph_repo)}]
     if fxci_config_repo:
         existing = {r["name"] for r in repos}
-        for r in _discover_tracked_repos(fxci_config_repo, search_root):
+        for r in discover_tracked_repos(fxci_config_repo, search_root):
             if r["name"] not in existing:
                 repos.append(r)
                 existing.add(r["name"])
     return repos
 
 
-def _parse_local_config_content(text):
+def parse_local_config_content(text):
     def get_path(key):
         m = re.search(rf"^{key}:\s*(.+)$", text, re.MULTILINE)
         return Path(m.group(1).strip()) if m else None
@@ -122,7 +119,7 @@ def _parse_local_config_content(text):
     }
 
 
-def _render_local_config(taskgraph_repo, fxci_config_repo, repos):
+def render_local_config(taskgraph_repo, fxci_config_repo, repos):
     fxci_line = f"fxci_config_repo: {fxci_config_repo}\n" if fxci_config_repo else ""
     repo_lines = "".join(
         f"  - name: {r['name']}\n    path: {r['path']}\n" for r in repos
@@ -135,20 +132,20 @@ def _render_local_config(taskgraph_repo, fxci_config_repo, repos):
     )
 
 
-def _compute_local_config_update():
+def compute_local_config_update():
     if not LOCAL_CONFIG_FILE.exists():
         return [], None, []
     old_content = LOCAL_CONFIG_FILE.read_text()
-    config = _parse_local_config_content(old_content)
+    config = parse_local_config_content(old_content)
     taskgraph_repo = config["taskgraph_repo"]
     fxci_config_repo = config["fxci_config_repo"]
     if not taskgraph_repo:
         return [], None, []
-    repos = _build_repos_list(
+    repos = build_repos_list(
         taskgraph_repo, fxci_config_repo, taskgraph_repo.parent.parent
     )
-    new_content = _render_local_config(taskgraph_repo, fxci_config_repo, repos)
-    diff = _unified_diff(
+    new_content = render_local_config(taskgraph_repo, fxci_config_repo, repos)
+    diff = unified_diff(
         old_content,
         new_content,
         str(LOCAL_CONFIG_FILE),
@@ -157,7 +154,7 @@ def _compute_local_config_update():
     return diff, new_content, repos
 
 
-def _get_search_root():
+def get_search_root():
     root_input = input("Enter root path to search for repos (e.g., ~/git): ").strip()
     root = Path(root_input).expanduser().resolve()
     if not root.is_dir():
@@ -166,7 +163,7 @@ def _get_search_root():
     return root
 
 
-def _pick_repo(candidates, label, *, required):
+def pick_repo(candidates, label, *, required):
     if not candidates:
         if required:
             print(f"ERROR: Could not find a {label} checkout.", file=sys.stderr)
@@ -182,15 +179,15 @@ def _pick_repo(candidates, label, *, required):
     return candidates[int(input("Pick one (number): ").strip()) - 1]
 
 
-def _generate_local_config():
+def generate_local_config():
     print("\n--- CLAUDE.local.md setup ---")
-    root = _get_search_root()
+    root = get_search_root()
     print(f"\nSearching for repos under {root}...")
-    taskgraph_candidates, fxci_candidates = _find_repo_candidates(root)
-    taskgraph_repo = _pick_repo(taskgraph_candidates, "taskgraph", required=True)
-    fxci_config_repo = _pick_repo(fxci_candidates, "fxci-config", required=False)
-    repos = _build_repos_list(taskgraph_repo, fxci_config_repo, root)
-    content = _render_local_config(taskgraph_repo, fxci_config_repo, repos)
+    taskgraph_candidates, fxci_candidates = find_repo_candidates(root)
+    taskgraph_repo = pick_repo(taskgraph_candidates, "taskgraph", required=True)
+    fxci_config_repo = pick_repo(fxci_candidates, "fxci-config", required=False)
+    repos = build_repos_list(taskgraph_repo, fxci_config_repo, root)
+    content = render_local_config(taskgraph_repo, fxci_config_repo, repos)
     print("\n--- Generated CLAUDE.local.md ---")
     print(content)
     if input("Write CLAUDE.local.md? [y/N]: ").strip().lower() != "y":
