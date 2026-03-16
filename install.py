@@ -199,6 +199,32 @@ def _print_symlink_ops(ops):
             print(f"  = no change: {op[2]}")
 
 
+_SKIP_DIRS = frozenset(
+    {".venv", ".tox", "__pycache__", "site-packages", "node_modules"}
+)
+
+
+def _find_files(root, relative_pattern):
+    """Walk root skipping venv/cache dirs, yield paths matching relative_pattern."""
+    parts = Path(relative_pattern).parts
+    filename = parts[-1]
+    subdirs = parts[:-1]
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = [
+            d for d in dirnames if d not in _SKIP_DIRS and not d.startswith(".")
+        ]
+        if filename in filenames:
+            candidate = Path(dirpath) / filename
+            if subdirs:
+                ok = all(
+                    candidate.parts[-(len(subdirs) + 1 + i)] == subdirs[i]
+                    for i in range(len(subdirs))
+                )
+                if not ok:
+                    continue
+            yield candidate
+
+
 def _generate_local_config():
     print("\n--- CLAUDE.local.md setup ---")
     root_input = input(
@@ -211,16 +237,21 @@ def _generate_local_config():
 
     print(f"\nSearching for taskgraph repo under {root}...")
     taskgraph_candidates = []
-    for pyproject in root.rglob("pyproject.toml"):
+    for pyproject in _find_files(root, "pyproject.toml"):
         try:
             text = pyproject.read_text()
             if 'name = "taskgraph"' in text or "name = 'taskgraph'" in text:
-                taskgraph_candidates.append(pyproject.parent)
-                continue
+                candidate = pyproject.parent
+                if candidate.name == "src" and (candidate.parent / ".git").is_dir():
+                    candidate = candidate.parent
+                if candidate not in taskgraph_candidates:
+                    taskgraph_candidates.append(candidate)
         except OSError:
             pass
-    for init in root.rglob("taskgraph/__init__.py"):
+    for init in _find_files(root, "taskgraph/__init__.py"):
         candidate = init.parent.parent
+        if candidate.name == "src" and (candidate.parent / ".git").is_dir():
+            candidate = candidate.parent
         if candidate not in taskgraph_candidates:
             taskgraph_candidates.append(candidate)
 
@@ -240,10 +271,15 @@ def _generate_local_config():
 
     print(f"\nSearching for fxci-config repo under {root}...")
     fxci_config_repo = None
-    for env_dir in root.rglob("environments/firefoxci"):
-        fxci_config_repo = env_dir.parent.parent
-        print(f"Found fxci-config: {fxci_config_repo}")
-        break
+    for pyproject in _find_files(root, "pyproject.toml"):
+        try:
+            text = pyproject.read_text()
+            if 'name = "fxci-config"' in text or "name = 'fxci-config'" in text:
+                fxci_config_repo = pyproject.parent
+                print(f"Found fxci-config: {fxci_config_repo}")
+                break
+        except OSError:
+            pass
     if not fxci_config_repo:
         print("fxci-config not found — skipping tracked repo discovery.")
 

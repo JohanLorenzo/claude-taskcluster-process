@@ -372,8 +372,8 @@ def test_generate_local_config_finds_fxci_config(tmp_path):
     (tg_dir / "pyproject.toml").write_text('[project]\nname = "taskgraph"\n')
 
     fxci_dir = tmp_path / "git" / "mozilla-releng" / "fxci-config"
-    env_dir = fxci_dir / "environments" / "firefoxci"
-    env_dir.mkdir(parents=True)
+    fxci_dir.mkdir(parents=True)
+    (fxci_dir / "pyproject.toml").write_text('[project]\nname = "fxci-config"\n')
 
     inputs = [str(tmp_path / "git"), "y"]
     written_content = {}
