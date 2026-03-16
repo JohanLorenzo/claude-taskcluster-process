@@ -185,33 +185,47 @@ def _compute_symlink_ops():
     return ops
 
 
+def _replace_file_warnings(ops):
+    return [
+        f"WARNING: {op[2]} is a regular file (not a symlink) — will be replaced."
+        for op in ops
+        if op[0] == "replace_file"
+    ]
+
+
+def _old_shell_hook_warnings():
+    old_hooks_dir = CLAUDE_DIR / "hooks"
+    if not old_hooks_dir.is_dir():
+        return []
+    return [
+        f"NOTE: Old shell hook {sh} has a Python replacement. "
+        "Consider removing it after install."
+        for sh in old_hooks_dir.glob("*.sh")
+        if (REPO_ROOT / "hooks" / (sh.stem.replace("-", "_") + ".py")).exists()
+    ]
+
+
+def _stale_symlink_warnings():
+    if not RULES_DIR.is_dir():
+        return []
+    return [
+        f"WARNING: Stale symlink: {link} → {os.readlink(link)}"
+        for link in RULES_DIR.glob("*.md")
+        if link.is_symlink() and not link.resolve().exists()
+    ]
+
+
 def _check_preflight_warnings(ops):
-    warnings = []
+    warnings = [
+        *_replace_file_warnings(ops),
+        *_old_shell_hook_warnings(),
+        *_stale_symlink_warnings(),
+    ]
     errors = []
     if SETTINGS_FILE.exists() and not os.access(SETTINGS_FILE, os.W_OK):
         warnings.append(f"WARNING: {SETTINGS_FILE} is read-only.")
     if RULES_DIR.exists() and not RULES_DIR.is_dir():
         errors.append(f"ERROR: {RULES_DIR} exists but is not a directory.")
-    for op in ops:
-        if op[0] == "replace_file":
-            warnings.append(
-                f"WARNING: {op[2]} is a regular file (not a symlink)"
-                " — will be replaced."
-            )
-    old_hooks_dir = CLAUDE_DIR / "hooks"
-    if old_hooks_dir.is_dir():
-        for sh_file in old_hooks_dir.glob("*.sh"):
-            py_replacement = (
-                REPO_ROOT / "hooks" / (sh_file.stem.replace("-", "_") + ".py")
-            )
-            if py_replacement.exists():
-                warnings.append(
-                    f"NOTE: Old shell hook {sh_file} has a Python replacement. "
-                    "Consider removing it after install."
-                )
-    for link in RULES_DIR.glob("*.md") if RULES_DIR.is_dir() else []:
-        if link.is_symlink() and not link.resolve().exists():
-            warnings.append(f"WARNING: Stale symlink: {link} → {os.readlink(link)}")
     return warnings, errors
 
 

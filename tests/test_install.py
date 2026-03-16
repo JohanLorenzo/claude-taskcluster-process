@@ -637,7 +637,76 @@ def test_main_exits_without_prompt_when_no_changes(tmp_path, capsys):
 
 
 # ---------------------------------------------------------------------------
-# _check_preflight_warnings
+# _replace_file_warnings
+# ---------------------------------------------------------------------------
+
+
+def test_replace_file_warnings_returns_warning_per_op(tmp_path):
+    src = tmp_path / "src.md"
+    target = tmp_path / "target.md"
+    src.write_text("x")
+    target.write_text("y")
+    warnings = inst._replace_file_warnings([("replace_file", src, target)])
+    assert len(warnings) == 1
+    assert "regular file" in warnings[0]
+
+
+def test_replace_file_warnings_empty_for_other_ops(tmp_path):
+    src = tmp_path / "src.md"
+    target = tmp_path / "target.md"
+    assert inst._replace_file_warnings([("create", src, target)]) == []
+    assert inst._replace_file_warnings([("noop", src, target)]) == []
+
+
+# ---------------------------------------------------------------------------
+# _old_shell_hook_warnings
+# ---------------------------------------------------------------------------
+
+
+def test_old_shell_hook_warnings_notes_replaceable_hooks(tmp_path):
+    old_hooks_dir = tmp_path / "hooks"
+    old_hooks_dir.mkdir()
+    (old_hooks_dir / "block-no-verify.sh").write_text("#!/bin/bash\n")
+    repo_root = tmp_path / "repo"
+    (repo_root / "hooks").mkdir(parents=True)
+    (repo_root / "hooks" / "block_no_verify.py").write_text("# py")
+
+    with (
+        patch.object(inst, "CLAUDE_DIR", tmp_path),
+        patch.object(inst, "REPO_ROOT", repo_root),
+    ):
+        warnings = inst._old_shell_hook_warnings()
+
+    assert any("block-no-verify.sh" in w for w in warnings)
+
+
+def test_old_shell_hook_warnings_empty_when_no_hooks_dir(tmp_path):
+    with patch.object(inst, "CLAUDE_DIR", tmp_path):
+        assert inst._old_shell_hook_warnings() == []
+
+
+# ---------------------------------------------------------------------------
+# _stale_symlink_warnings
+# ---------------------------------------------------------------------------
+
+
+def test_stale_symlink_warnings_detects_broken_link(tmp_path):
+    rules_dir = tmp_path / "rules"
+    rules_dir.mkdir()
+    stale = rules_dir / "gone.md"
+    stale.symlink_to(tmp_path / "nonexistent.md")
+    with patch.object(inst, "RULES_DIR", rules_dir):
+        warnings = inst._stale_symlink_warnings()
+    assert any("Stale" in w for w in warnings)
+
+
+def test_stale_symlink_warnings_empty_when_no_rules_dir(tmp_path):
+    with patch.object(inst, "RULES_DIR", tmp_path / "missing"):
+        assert inst._stale_symlink_warnings() == []
+
+
+# ---------------------------------------------------------------------------
+# _check_preflight_warnings (integration)
 # ---------------------------------------------------------------------------
 
 
@@ -647,53 +716,6 @@ def test_preflight_rules_dir_is_file(tmp_path):
     with patch.object(inst, "RULES_DIR", rules_as_file):
         _, errors = inst._check_preflight_warnings([])
     assert any("not a directory" in e for e in errors)
-
-
-def test_preflight_replace_file_warning(tmp_path):
-    rules_target = tmp_path / "claude_rules"
-    rules_target.mkdir()
-    rules_src = tmp_path / "rules"
-    rules_src.mkdir()
-    md_src = rules_src / "foo.md"
-    md_src.write_text("x")
-    md_target = rules_target / "foo.md"
-    md_target.write_text("y")
-    ops = [("replace_file", md_src, md_target)]
-    with patch.object(inst, "RULES_DIR", rules_target):
-        warnings, _ = inst._check_preflight_warnings(ops)
-    assert any("regular file" in w for w in warnings)
-
-
-def test_preflight_old_sh_hooks_noted(tmp_path):
-    # Set up: old shell hook in CLAUDE_DIR/hooks/ with a .py replacement in repo
-    old_hooks_dir = tmp_path / "hooks"
-    old_hooks_dir.mkdir()
-    (old_hooks_dir / "block-no-verify.sh").write_text("#!/bin/bash\n")
-
-    repo_root = tmp_path / "repo"
-    repo_root.mkdir()
-    repo_hooks = repo_root / "hooks"
-    repo_hooks.mkdir()
-    (repo_hooks / "block_no_verify.py").write_text("# py")
-
-    with (
-        patch.object(inst, "CLAUDE_DIR", tmp_path),
-        patch.object(inst, "REPO_ROOT", repo_root),
-        patch.object(inst, "RULES_DIR", tmp_path / "rules"),
-    ):
-        warnings, _ = inst._check_preflight_warnings([])
-
-    assert any("block-no-verify.sh" in w or "block_no_verify" in w for w in warnings)
-
-
-def test_preflight_stale_symlink(tmp_path):
-    rules_target = tmp_path / "claude_rules"
-    rules_target.mkdir()
-    stale = rules_target / "gone.md"
-    stale.symlink_to(tmp_path / "nonexistent.md")
-    with patch.object(inst, "RULES_DIR", rules_target):
-        warnings, _ = inst._check_preflight_warnings([])
-    assert any("Stale" in w for w in warnings)
 
 
 # ---------------------------------------------------------------------------
