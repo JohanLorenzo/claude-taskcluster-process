@@ -503,6 +503,97 @@ def test_render_local_config_structure(tmp_path):
 
 
 # ---------------------------------------------------------------------------
+# _parse_github_slugs
+# ---------------------------------------------------------------------------
+
+_PROJECTS_YML = """\
+---
+ash:
+  repo: https://hg.mozilla.org/projects/ash
+  repo_type: hg
+taskgraph:
+  repo: https://github.com/taskcluster/taskgraph
+  repo_type: git
+fxci-config:
+  repo: https://github.com/mozilla-releng/fxci-config
+  repo_type: git
+with-dot-git:
+  repo: https://github.com/org/project.git
+  repo_type: git
+"""
+
+
+def test_parse_github_slugs_returns_github_repos(tmp_path):
+    (tmp_path / "projects.yml").write_text(_PROJECTS_YML)
+    slugs = inst._parse_github_slugs(tmp_path)
+    assert slugs == {
+        "taskcluster/taskgraph",
+        "mozilla-releng/fxci-config",
+        "org/project",
+    }
+
+
+def test_parse_github_slugs_excludes_hg_repos(tmp_path):
+    (tmp_path / "projects.yml").write_text(_PROJECTS_YML)
+    slugs = inst._parse_github_slugs(tmp_path)
+    assert not any("hg.mozilla.org" in s for s in slugs)
+
+
+def test_parse_github_slugs_strips_dot_git_suffix(tmp_path):
+    (tmp_path / "projects.yml").write_text(_PROJECTS_YML)
+    assert "org/project" in inst._parse_github_slugs(tmp_path)
+
+
+def test_parse_github_slugs_missing_file_returns_empty(tmp_path):
+    assert inst._parse_github_slugs(tmp_path) == set()
+
+
+# ---------------------------------------------------------------------------
+# _discover_tracked_repos
+# ---------------------------------------------------------------------------
+
+
+def test_discover_tracked_repos_finds_matching_local_clone(tmp_path):
+    fxci = tmp_path / "fxci-config"
+    fxci.mkdir()
+    (fxci / "projects.yml").write_text(
+        "taskgraph:\n  repo: https://github.com/taskcluster/taskgraph\n"
+    )
+    tg = tmp_path / "taskcluster" / "taskgraph"
+    tg.mkdir(parents=True)
+
+    repos = inst._discover_tracked_repos(fxci, tmp_path)
+    assert repos == [{"name": "taskcluster/taskgraph", "path": str(tg)}]
+
+
+def test_discover_tracked_repos_skips_missing_clones(tmp_path):
+    fxci = tmp_path / "fxci-config"
+    fxci.mkdir()
+    (fxci / "projects.yml").write_text(
+        "taskgraph:\n  repo: https://github.com/taskcluster/taskgraph\n"
+    )
+    # No local clone created
+    repos = inst._discover_tracked_repos(fxci, tmp_path)
+    assert repos == []
+
+
+def test_discover_tracked_repos_matches_by_org_and_name(tmp_path):
+    fxci = tmp_path / "fxci-config"
+    fxci.mkdir()
+    (fxci / "projects.yml").write_text(
+        "a:\n  repo: https://github.com/org-a/project\n"
+        "b:\n  repo: https://github.com/org-b/project\n"
+    )
+    # Only org-b/project exists locally
+    (tmp_path / "org-b" / "project").mkdir(parents=True)
+
+    repos = inst._discover_tracked_repos(fxci, tmp_path)
+    assert repos == [
+        {"name": "org-b/project", "path": str(tmp_path / "org-b" / "project")}
+    ]
+
+
+# ---------------------------------------------------------------------------
 # _pick_repo
 # ---------------------------------------------------------------------------
 

@@ -311,31 +311,32 @@ def _generate_local_config():
     print(f"Written: {LOCAL_CONFIG_FILE}")
 
 
+def _parse_github_slugs(fxci_config_repo):
+    projects_file = fxci_config_repo / "projects.yml"
+    try:
+        text = projects_file.read_text()
+    except OSError:
+        return set()
+    slugs = set()
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("repo:"):
+            url = stripped[len("repo:") :].strip().rstrip("/").removesuffix(".git")
+            if "github.com/" in url:
+                slug = url.split("github.com/", 1)[1]
+                if "/" in slug:
+                    slugs.add(slug)
+    return slugs
+
+
 def _discover_tracked_repos(fxci_config_repo, search_root):
+    slugs = _parse_github_slugs(fxci_config_repo)
     repos = []
-    projects_dir = fxci_config_repo / "config" / "projects"
-    if not projects_dir.is_dir():
-        return repos
-    known_names = set()
-    for yml in projects_dir.glob("*.yml"):
-        try:
-            text = yml.read_text()
-            for line in text.splitlines():
-                line = line.strip()
-                if line.startswith("repo:") or line.startswith("- repo:"):
-                    url = line.split(":", 1)[1].strip().rstrip("/")
-                    if "github.com" in url:
-                        parts = url.rstrip(".git").split("/")
-                        if len(parts) >= 2:
-                            slug = "/".join(parts[-2:])
-                            known_names.add(slug)
-        except OSError:
-            pass
-    for slug in sorted(known_names):
+    for slug in sorted(slugs):
         org, name = slug.split("/", 1)
-        for candidate in search_root.rglob(f"{name}/.git"):
-            repos.append({"name": slug, "path": str(candidate.parent)})
-            break
+        candidate = search_root / org / name
+        if candidate.is_dir():
+            repos.append({"name": slug, "path": str(candidate)})
     return repos
 
 
