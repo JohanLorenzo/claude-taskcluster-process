@@ -1,0 +1,64 @@
+---
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-added-large-files
+      - id: check-ast
+      - id: check-executables-have-shebangs
+      - id: check-shebang-scripts-are-executable
+      - id: check-merge-conflict
+      - id: check-json
+      - id: check-yaml
+      - id: debug-statements
+      - id: end-of-file-fixer
+      - id: fix-byte-order-marker
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.6
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+      - id: ruff-format
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.4.2
+    hooks:
+      - id: codespell
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.38.0
+    hooks:
+      - id: yamllint
+        args: [--strict]
+  - repo: local
+    hooks:
+      - id: pytest-3.10
+        name: pytest (Python 3.10)
+        entry: uv run --python 3.10 pytest
+        language: system
+        pass_filenames: false
+        types: [python]
+      - id: pytest-3.11
+        name: pytest (Python 3.11)
+        entry: uv run --python 3.11 pytest
+        language: system
+        pass_filenames: false
+        types: [python]
+      - id: pytest-3.12
+        name: pytest (Python 3.12)
+        entry: uv run --python 3.12 pytest
+        language: system
+        pass_filenames: false
+        types: [python]
+      - id: pytest-3.13
+        name: pytest (Python 3.13)
+        entry: uv run --python 3.13 pytest
+        language: system
+        pass_filenames: false
+        types: [python]
+      - id: pytest-3.14
+        name: pytest (Python 3.14)
+        entry: uv run --python 3.14 pytest
+        language: system
+        pass_filenames: false
+        types: [python]
