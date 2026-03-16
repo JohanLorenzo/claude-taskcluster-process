@@ -1,4 +1,5 @@
 import json
+import logging
 from unittest.mock import patch
 
 import pytest
@@ -84,7 +85,8 @@ def test_plan_has_changes_true_when_actionable_ops(tmp_path):
 # ---------------------------------------------------------------------------
 
 
-def test_preview_changes_prints_no_change_when_up_to_date(capsys, tmp_path):
+def test_preview_changes_prints_no_change_when_up_to_date(caplog, tmp_path):
+
     plan = Plan(
         local_config_diff=[],
         new_local_content=None,
@@ -94,15 +96,16 @@ def test_preview_changes_prints_no_change_when_up_to_date(capsys, tmp_path):
         actionable_ops=[],
     )
     with (
+        caplog.at_level(logging.INFO),
         patch.object(install_plan, "LOCAL_CONFIG_FILE", tmp_path / "CLAUDE.local.md"),
         patch.object(install_plan, "SETTINGS_FILE", tmp_path / "settings.json"),
     ):
         install_plan.preview_changes(plan)
-    out = capsys.readouterr().out
-    assert "no change" in out
+    assert "no change" in caplog.text
 
 
-def test_preview_changes_prints_warnings(capsys, tmp_path):
+def test_preview_changes_prints_warnings(caplog, tmp_path):
+
     plan = Plan(
         local_config_diff=[],
         new_local_content=None,
@@ -113,11 +116,12 @@ def test_preview_changes_prints_warnings(capsys, tmp_path):
         warnings=["WARNING: something"],
     )
     with (
+        caplog.at_level(logging.INFO),
         patch.object(install_plan, "LOCAL_CONFIG_FILE", tmp_path / "CLAUDE.local.md"),
         patch.object(install_plan, "SETTINGS_FILE", tmp_path / "settings.json"),
     ):
         install_plan.preview_changes(plan)
-    assert "WARNING: something" in capsys.readouterr().out
+    assert "WARNING: something" in caplog.text
 
 
 # ---------------------------------------------------------------------------
@@ -262,15 +266,17 @@ def test_check_tools_required_missing_exits():
         check_tools()
 
 
-def test_check_tools_optional_missing_continues(capsys):
+def test_check_tools_optional_missing_continues(caplog):
     def fake_which(tool):
         return None if tool == "cargo" else "/usr/bin/" + tool
 
-    with patch("shutil.which", side_effect=fake_which):
+    with (
+        caplog.at_level(logging.WARNING),
+        patch("shutil.which", side_effect=fake_which),
+    ):
         check_tools()
 
-    out = capsys.readouterr().out
-    assert "cargo" in out
+    assert "cargo" in caplog.text
 
 
 # ---------------------------------------------------------------------------
@@ -278,7 +284,8 @@ def test_check_tools_optional_missing_continues(capsys):
 # ---------------------------------------------------------------------------
 
 
-def test_main_exits_without_prompt_when_no_changes(tmp_path, capsys):
+def test_main_exits_without_prompt_when_no_changes(tmp_path, caplog):
+
     hooks_cfg = tmp_path / "hooks-config.json"
     _write_json(hooks_cfg, {"PreToolUse": [], "PostToolUse": []})
     tg = tmp_path / "taskcluster" / "taskgraph"
@@ -303,6 +310,7 @@ def test_main_exits_without_prompt_when_no_changes(tmp_path, capsys):
     rules_target.mkdir()
 
     with (
+        caplog.at_level(logging.INFO),
         patch.object(settings, "SETTINGS_FILE", settings_file),
         patch.object(settings, "HOOKS_CONFIG_FILE", hooks_cfg),
         patch.object(settings, "REPO_ROOT", tmp_path),
@@ -319,4 +327,4 @@ def test_main_exits_without_prompt_when_no_changes(tmp_path, capsys):
         install.main()
 
     assert exc.value.code == 0
-    assert "up to date" in capsys.readouterr().out
+    assert "up to date" in caplog.text

@@ -1,5 +1,8 @@
+import logging
 import shutil
 import sys
+
+logger = logging.getLogger(__name__)
 
 REQUIRED_TOOLS = {
     "git": "Install via your system package manager (e.g., brew install git).",
@@ -24,11 +27,11 @@ def check_tools():
         if not shutil.which(tool):
             warnings.append(f"  Optional tool missing: {tool}\n    {instructions}")
     if warnings:
-        print("WARNINGS:")
+        logger.warning("WARNINGS:")
         for w in warnings:
-            print(w)
+            logger.warning(w)
     if errors:
-        print("ERRORS — install missing tools before running install.py:")
+        logger.error("ERRORS — install missing tools before running install.py:")
         for e in errors:
-            print(e)
+            logger.error(e)
         sys.exit(1)

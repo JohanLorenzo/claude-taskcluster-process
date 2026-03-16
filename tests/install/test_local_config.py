@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 from unittest.mock import patch
 
@@ -429,13 +430,14 @@ def test_pick_repo_single_returns_it():
     assert local_config.pick_repo([Path("/a")], "mything", required=True) == Path("/a")
 
 
-def test_pick_repo_multiple_prompts(capsys):
-    with patch("builtins.input", return_value="2"):
+def test_pick_repo_multiple_prompts(caplog):
+
+    with caplog.at_level(logging.INFO), patch("builtins.input", return_value="2"):
         result = local_config.pick_repo(
             [Path("/a"), Path("/b")], "mything", required=True
         )
     assert result == Path("/b")
-    assert "mything" in capsys.readouterr().out
+    assert "mything" in caplog.text
 
 
 def test_pick_repo_required_missing_exits():

@@ -22,7 +22,6 @@ ignore = [
   "ANN",    # type annotations — not required here
   "COM",    # trailing commas — handled by ruff format
   "CPY",    # copyright headers
-  "T201",   # print() is used intentionally throughout
   "ARG001", # unused function args — required by hook/mock interfaces
   "S101",   # assert — standard in tests
   "S108",   # /tmp in tests is a mock value, not a real temp file

@@ -1,4 +1,5 @@
 import json
+import logging
 import subprocess
 import sys
 from dataclasses import dataclass, field
@@ -13,6 +14,8 @@ from .settings import (
     settings_diff,
 )
 from .symlinks import compute_symlink_ops, print_symlink_ops
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -36,7 +39,7 @@ def plan_changes():
     symlink_ops = compute_symlink_ops()
     warnings, errors = check_preflight_warnings(symlink_ops)
     for e in errors:
-        print(e, file=sys.stderr)
+        logger.error(e)
     if errors:
         sys.exit(1)
     local_config_diff, new_local_content, new_repos = compute_local_config_update()
@@ -57,27 +60,27 @@ def plan_changes():
 
 def preview_changes(plan):
     for w in plan.warnings:
-        print(w)
+        logger.info(w)
     for path, diff in [
         (LOCAL_CONFIG_FILE, plan.local_config_diff),
         (SETTINGS_FILE, plan.settings_diff),
     ]:
         if diff:
-            print(f"\n--- {path} ---")
-            print("".join(diff))
+            logger.info("\n--- %s ---", path)
+            logger.info("".join(diff))
         else:
-            print(f"\n= no change: {path}")
+            logger.info("\n= no change: %s", path)
     if plan.symlink_ops:
-        print("\n--- rules/ symlinks ---")
+        logger.info("\n--- rules/ symlinks ---")
         print_symlink_ops(plan.symlink_ops)
 
 
 def write_files(plan):
     if plan.local_config_diff:
         LOCAL_CONFIG_FILE.write_text(plan.new_local_content)
-        print(f"Updated: {LOCAL_CONFIG_FILE}")
+        logger.info("Updated: %s", LOCAL_CONFIG_FILE)
     SETTINGS_FILE.write_text(json.dumps(plan.new_settings, indent=2) + "\n")
-    print(f"Updated: {SETTINGS_FILE}")
+    logger.info("Updated: %s", SETTINGS_FILE)
 
 
 def apply_symlink_op(op):
@@ -86,7 +89,7 @@ def apply_symlink_op(op):
         target.unlink()
     target.symlink_to(src)
     verb = "Replaced" if kind == "replace_file" else "Linked"
-    print(f"{verb}: {target} → {src}")
+    logger.info("%s: %s → %s", verb, target, src)
 
 
 def _apply_symlinks(ops):
@@ -98,13 +101,13 @@ def _apply_symlinks(ops):
 def apply_changes(plan):
     write_files(plan)
     _apply_symlinks(plan.actionable_ops)
-    print("\nDone.")
+    logger.info("\nDone.")
     if (
         subprocess.run(
             ["git", "remote", "get-url", "origin"], capture_output=True, check=False
         ).returncode
         == 0
     ):
-        print(
+        logger.info(
             "Note: old ~/.claude/hooks/*.sh scripts can be removed if no longer needed."
         )

@@ -1,5 +1,9 @@
+import logging
+
 from .constants import REPO_ROOT, RULES_DIR
 from .utils import unified_diff
+
+logger = logging.getLogger(__name__)
 
 
 def compute_symlink_ops():
@@ -42,17 +46,17 @@ def stale_symlink_warnings():
 def print_symlink_ops(ops):
     for op in ops:
         if op[0] == "create":
-            print(f"  + new symlink: {op[2]} → {op[1]}")
+            logger.info("  + new symlink: %s → %s", op[2], op[1])
         elif op[0] == "update":
-            print(f"  ~ update symlink: {op[2]} → {op[1]} (was → {op[3]})")
+            logger.info("  ~ update symlink: %s → %s (was → %s)", op[2], op[1], op[3])
         elif op[0] == "replace_file":
             src_text = op[1].read_text()
             target_text = op[2].read_text()
             diff = unified_diff(target_text, src_text, str(op[2]), str(op[1]))
             if diff:
-                print(f"  ~ replace file with symlink: {op[2]}")
-                print("".join(diff[:40]))
+                logger.info("  ~ replace file with symlink: %s", op[2])
+                logger.info("".join(diff[:40]))
             else:
-                print(f"  ~ replace file with symlink (same content): {op[2]}")
+                logger.info("  ~ replace file with symlink (same content): %s", op[2])
         elif op[0] == "noop":
-            print(f"  = no change: {op[2]}")
+            logger.info("  = no change: %s", op[2])

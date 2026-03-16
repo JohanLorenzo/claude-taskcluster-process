@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 import sys
@@ -5,6 +6,8 @@ from pathlib import Path
 
 from .constants import LOCAL_CONFIG_FILE
 from .utils import unified_diff
+
+logger = logging.getLogger(__name__)
 
 _SKIP_DIRS = frozenset(
     {".venv", ".tox", "__pycache__", "site-packages", "node_modules"}
@@ -158,7 +161,7 @@ def get_search_root():
     root_input = input("Enter root path to search for repos (e.g., ~/git): ").strip()
     root = Path(root_input).expanduser().resolve()
     if not root.is_dir():
-        print(f"ERROR: {root} is not a directory.", file=sys.stderr)
+        logger.error("ERROR: %s is not a directory.", root)
         sys.exit(1)
     return root
 
@@ -166,32 +169,32 @@ def get_search_root():
 def pick_repo(candidates, label, *, required):
     if not candidates:
         if required:
-            print(f"ERROR: Could not find a {label} checkout.", file=sys.stderr)
+            logger.error("ERROR: Could not find a %s checkout.", label)
             sys.exit(1)
-        print(f"{label} not found — skipping.")
+        logger.info("%s not found — skipping.", label)
         return None
     if len(candidates) == 1:
-        print(f"Found {label}: {candidates[0]}")
+        logger.info("Found %s: %s", label, candidates[0])
         return candidates[0]
-    print(f"Multiple {label} candidates found:")
+    logger.info("Multiple %s candidates found:", label)
     for i, c in enumerate(candidates):
-        print(f"  {i + 1}. {c}")
+        logger.info("  %d. %s", i + 1, c)
     return candidates[int(input("Pick one (number): ").strip()) - 1]
 
 
 def generate_local_config():
-    print("\n--- CLAUDE.local.md setup ---")
+    logger.info("\n--- CLAUDE.local.md setup ---")
     root = get_search_root()
-    print(f"\nSearching for repos under {root}...")
+    logger.info("\nSearching for repos under %s...", root)
     taskgraph_candidates, fxci_candidates = find_repo_candidates(root)
     taskgraph_repo = pick_repo(taskgraph_candidates, "taskgraph", required=True)
     fxci_config_repo = pick_repo(fxci_candidates, "fxci-config", required=False)
     repos = build_repos_list(taskgraph_repo, fxci_config_repo, root)
     content = render_local_config(taskgraph_repo, fxci_config_repo, repos)
-    print("\n--- Generated CLAUDE.local.md ---")
-    print(content)
+    logger.info("\n--- Generated CLAUDE.local.md ---")
+    logger.info(content)
     if input("Write CLAUDE.local.md? [y/N]: ").strip().lower() != "y":
-        print("Aborted.")
+        logger.info("Aborted.")
         sys.exit(0)
     LOCAL_CONFIG_FILE.write_text(content)
-    print(f"Written: {LOCAL_CONFIG_FILE}")
+    logger.info("Written: %s", LOCAL_CONFIG_FILE)

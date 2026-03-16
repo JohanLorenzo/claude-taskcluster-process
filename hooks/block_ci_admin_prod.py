@@ -2,8 +2,11 @@
 """Hook: block ci-admin apply against the firefoxci production environment."""
 
 import json
+import logging
 import re
 import sys
+
+logger = logging.getLogger(__name__)
 
 
 def check(tool_input, cwd=None):
@@ -20,12 +23,13 @@ def check(tool_input, cwd=None):
 
 
 def main():
+    logging.basicConfig(format="%(message)s")
     data = json.load(sys.stdin)
     tool_input = data.get("tool_input", {})
     cwd = data.get("cwd")
     allowed, reason = check(tool_input, cwd=cwd)
     if not allowed:
-        print(f"BLOCKED: {reason}", file=sys.stderr)
+        logger.error("BLOCKED: %s", reason)
         sys.exit(2)
 
 

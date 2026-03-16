@@ -2,9 +2,12 @@
 """Hook: run cargo clippy after editing a Rust file (PostToolUse)."""
 
 import json
+import logging
 import subprocess
 import sys
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 def check(tool_input, cwd=None):
@@ -30,10 +33,11 @@ def check(tool_input, cwd=None):
     )
     if result.returncode != 0:
         output = (result.stdout + result.stderr).strip()
-        print(output[:2000], file=sys.stderr)
+        logger.warning("%s", output[:2000])
 
 
 def main():
+    logging.basicConfig(format="%(message)s")
     data = json.load(sys.stdin)
     tool_input = data.get("tool_input", {})
     cwd = data.get("cwd")

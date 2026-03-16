@@ -1,9 +1,12 @@
 import copy
 import json
+import logging
 import sys
 
 from .constants import HOOKS_CONFIG_FILE, REPO_ROOT, SETTINGS_FILE
 from .utils import unified_diff
+
+logger = logging.getLogger(__name__)
 
 
 def load_hooks_config():
@@ -22,13 +25,13 @@ def load_hooks_config():
 
 def load_settings():
     if not SETTINGS_FILE.exists():
-        print(f"ERROR: {SETTINGS_FILE} not found.", file=sys.stderr)
+        logger.error("ERROR: %s not found.", SETTINGS_FILE)
         sys.exit(1)
     try:
         with SETTINGS_FILE.open() as f:
             return json.load(f)
-    except json.JSONDecodeError as e:
-        print(f"ERROR: {SETTINGS_FILE} is not valid JSON: {e}", file=sys.stderr)
+    except json.JSONDecodeError:
+        logger.exception("ERROR: %s is not valid JSON", SETTINGS_FILE)
         sys.exit(1)
 
 
