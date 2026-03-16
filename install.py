@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Install Claude Code hooks and rules symlinks from this repo."""
 
+import copy
 import difflib
 import json
 import os
@@ -15,7 +16,6 @@ RULES_DIR = CLAUDE_DIR / "rules"
 SETTINGS_FILE = CLAUDE_DIR / "settings.json"
 HOOKS_CONFIG_FILE = REPO_ROOT / "hooks-config.json"
 LOCAL_CONFIG_FILE = REPO_ROOT / "CLAUDE.local.md"
-LOCAL_CONFIG_TEMPLATE = REPO_ROOT / "CLAUDE.local.md.template"
 
 REQUIRED_TOOLS = {
     "git": "Install via your system package manager (e.g., brew install git).",
@@ -76,12 +76,21 @@ def _load_settings():
         sys.exit(1)
 
 
-def _parse_local_config(path):
+def _unified_diff(old_text, new_text, fromfile, tofile):
+    return list(
+        difflib.unified_diff(
+            old_text.splitlines(keepends=True),
+            new_text.splitlines(keepends=True),
+            fromfile=fromfile,
+            tofile=tofile,
+        )
+    )
+
+
+def _parse_local_config_content(text):
     result = {"taskgraph_repo": None, "fxci_config_repo": None, "repo_paths": []}
-    if not path.exists():
-        return result
     in_repos = False
-    for line in path.read_text().splitlines():
+    for line in text.splitlines():
         stripped = line.strip()
         if stripped.startswith("taskgraph_repo:"):
             result["taskgraph_repo"] = Path(stripped[len("taskgraph_repo:") :].strip())
@@ -104,43 +113,49 @@ def _parse_local_config(path):
     return result
 
 
-def _read_local_config_repos():
-    return _parse_local_config(LOCAL_CONFIG_FILE)["repo_paths"]
+def _parse_local_config(path):
+    if not path.exists():
+        return {"taskgraph_repo": None, "fxci_config_repo": None, "repo_paths": []}
+    return _parse_local_config_content(path.read_text())
+
+
+def _build_repos_list(taskgraph_repo, fxci_config_repo, search_root):
+    tg_slug = "/".join(taskgraph_repo.parts[-2:])
+    repos = [{"name": tg_slug, "path": str(taskgraph_repo)}]
+    if fxci_config_repo:
+        existing = {r["name"] for r in repos}
+        for r in _discover_tracked_repos(fxci_config_repo, search_root):
+            if r["name"] not in existing:
+                repos.append(r)
+                existing.add(r["name"])
+    return repos
 
 
 def _compute_local_config_update():
-    config = _parse_local_config(LOCAL_CONFIG_FILE)
+    if not LOCAL_CONFIG_FILE.exists():
+        return [], None, []
+    old_content = LOCAL_CONFIG_FILE.read_text()
+    config = _parse_local_config_content(old_content)
     taskgraph_repo = config["taskgraph_repo"]
     fxci_config_repo = config["fxci_config_repo"]
     if not taskgraph_repo:
         return [], None, []
-    search_root = taskgraph_repo.parent.parent
-    tg_slug = "/".join(taskgraph_repo.parts[-2:])
-    repos = [{"name": tg_slug, "path": str(taskgraph_repo)}]
-    if fxci_config_repo:
-        existing_names = {r["name"] for r in repos}
-        for r in _discover_tracked_repos(fxci_config_repo, search_root):
-            if r["name"] not in existing_names:
-                repos.append(r)
-                existing_names.add(r["name"])
+    repos = _build_repos_list(
+        taskgraph_repo, fxci_config_repo, taskgraph_repo.parent.parent
+    )
     new_content = _render_local_config(taskgraph_repo, fxci_config_repo, repos)
-    old_content = LOCAL_CONFIG_FILE.read_text()
-    diff = list(
-        difflib.unified_diff(
-            old_content.splitlines(keepends=True),
-            new_content.splitlines(keepends=True),
-            fromfile=str(LOCAL_CONFIG_FILE),
-            tofile=str(LOCAL_CONFIG_FILE) + " (new)",
-        )
+    diff = _unified_diff(
+        old_content,
+        new_content,
+        str(LOCAL_CONFIG_FILE),
+        str(LOCAL_CONFIG_FILE) + " (new)",
     )
     return diff, new_content, repos
 
 
-def _compute_new_settings(old_settings, hooks_config, repo_paths=None):
-    new_settings = json.loads(json.dumps(old_settings))
+def _compute_new_settings(old_settings, hooks_config, repo_paths):
+    new_settings = copy.deepcopy(old_settings)
     new_settings["hooks"] = hooks_config
-    if repo_paths is None:
-        repo_paths = _read_local_config_repos()
     if repo_paths:
         perms = new_settings.setdefault("permissions", {})
         perms["additionalDirectories"] = repo_paths
@@ -148,15 +163,11 @@ def _compute_new_settings(old_settings, hooks_config, repo_paths=None):
 
 
 def _settings_diff(old, new):
-    old_lines = json.dumps(old, indent=2).splitlines(keepends=True)
-    new_lines = json.dumps(new, indent=2).splitlines(keepends=True)
-    return list(
-        difflib.unified_diff(
-            old_lines,
-            new_lines,
-            fromfile=str(SETTINGS_FILE),
-            tofile=str(SETTINGS_FILE) + " (new)",
-        )
+    return _unified_diff(
+        json.dumps(old, indent=2),
+        json.dumps(new, indent=2),
+        str(SETTINGS_FILE),
+        str(SETTINGS_FILE) + " (new)",
     )
 
 
@@ -218,14 +229,7 @@ def _print_symlink_ops(ops):
         elif op[0] == "replace_file":
             src_text = op[1].read_text()
             target_text = op[2].read_text()
-            diff = list(
-                difflib.unified_diff(
-                    target_text.splitlines(keepends=True),
-                    src_text.splitlines(keepends=True),
-                    fromfile=str(op[2]),
-                    tofile=str(op[1]),
-                )
-            )
+            diff = _unified_diff(target_text, src_text, str(op[2]), str(op[1]))
             if diff:
                 print(f"  ~ replace file with symlink: {op[2]}")
                 print("".join(diff[:40]))
@@ -335,14 +339,7 @@ def _generate_local_config():
     taskgraph_candidates, fxci_candidates = _find_repo_candidates(root)
     taskgraph_repo = _pick_repo(taskgraph_candidates, "taskgraph", required=True)
     fxci_config_repo = _pick_repo(fxci_candidates, "fxci-config", required=False)
-    tg_slug = "/".join(taskgraph_repo.parts[-2:])
-    repos = [{"name": tg_slug, "path": str(taskgraph_repo)}]
-    if fxci_config_repo:
-        existing_names = {r["name"] for r in repos}
-        for r in _discover_tracked_repos(fxci_config_repo, root):
-            if r["name"] not in existing_names:
-                repos.append(r)
-                existing_names.add(r["name"])
+    repos = _build_repos_list(taskgraph_repo, fxci_config_repo, root)
     content = _render_local_config(taskgraph_repo, fxci_config_repo, repos)
     print("\n--- Generated CLAUDE.local.md ---")
     print(content)
@@ -383,7 +380,6 @@ def _discover_tracked_repos(fxci_config_repo, search_root):
 
 
 def main():
-    os.chdir(REPO_ROOT)
     _check_tools()
 
     if not LOCAL_CONFIG_FILE.exists():

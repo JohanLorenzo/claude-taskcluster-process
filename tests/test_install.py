@@ -67,7 +67,22 @@ def test_hooks_config_resolves_relative_paths(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# _parse_local_config
+# _unified_diff
+# ---------------------------------------------------------------------------
+
+
+def test_unified_diff_returns_diff_lines():
+    diff = inst._unified_diff("old\n", "new\n", "a.txt", "b.txt")
+    assert any("-old" in line for line in diff)
+    assert any("+new" in line for line in diff)
+
+
+def test_unified_diff_empty_when_identical():
+    assert inst._unified_diff("same\n", "same\n", "a.txt", "b.txt") == []
+
+
+# ---------------------------------------------------------------------------
+# _parse_local_config / _parse_local_config_content
 # ---------------------------------------------------------------------------
 
 _LOCAL_CONFIG_CONTENT = """\
@@ -115,6 +130,58 @@ def test_parse_local_config_no_fxci_config(tmp_path):
     result = inst._parse_local_config(config_file)
     assert result["taskgraph_repo"] == Path("/tg/taskcluster/taskgraph")
     assert result["fxci_config_repo"] is None
+
+
+def test_parse_local_config_content_parses_text_directly():
+    result = inst._parse_local_config_content(
+        "taskgraph_repo: /tg\nfxci_config_repo: /fxci\nrepos:\n"
+        "  - name: taskcluster/taskgraph\n    path: /tg\n"
+    )
+    assert result["taskgraph_repo"] == Path("/tg")
+    assert result["fxci_config_repo"] == Path("/fxci")
+    assert "/tg" in result["repo_paths"]
+
+
+# ---------------------------------------------------------------------------
+# _build_repos_list
+# ---------------------------------------------------------------------------
+
+
+def test_build_repos_list_no_fxci(tmp_path):
+    tg = tmp_path / "taskcluster" / "taskgraph"
+    repos = inst._build_repos_list(tg, None, tmp_path)
+    assert repos == [{"name": "taskcluster/taskgraph", "path": str(tg)}]
+
+
+def test_build_repos_list_with_fxci_adds_discovered(tmp_path):
+    tg = tmp_path / "taskcluster" / "taskgraph"
+    tg.mkdir(parents=True)
+    fxci = tmp_path / "mozilla-releng" / "fxci-config"
+    fxci.mkdir(parents=True)
+    (fxci / "projects.yml").write_text(
+        "ss:\n  repo: https://github.com/mozilla-releng/scriptworker-scripts\n"
+    )
+    ss = tmp_path / "mozilla-releng" / "scriptworker-scripts"
+    ss.mkdir(parents=True)
+
+    repos = inst._build_repos_list(tg, fxci, tmp_path)
+    names = [r["name"] for r in repos]
+    assert "taskcluster/taskgraph" in names
+    assert "mozilla-releng/scriptworker-scripts" in names
+
+
+def test_build_repos_list_deduplicates_taskgraph(tmp_path):
+    tg = tmp_path / "taskcluster" / "taskgraph"
+    tg.mkdir(parents=True)
+    fxci = tmp_path / "mozilla-releng" / "fxci-config"
+    fxci.mkdir(parents=True)
+    # projects.yml also lists taskgraph — should not be duplicated
+    (fxci / "projects.yml").write_text(
+        "tg:\n  repo: https://github.com/taskcluster/taskgraph\n"
+    )
+
+    repos = inst._build_repos_list(tg, fxci, tmp_path)
+    assert sum(1 for r in repos if r["name"] == "taskcluster/taskgraph") == 1
 
 
 # ---------------------------------------------------------------------------
