@@ -1,0 +1,14 @@
+# Local configuration — DO NOT COMMIT
+
+## Required paths
+taskgraph_repo: /path/to/taskcluster/taskgraph
+fxci_config_repo: /path/to/mozilla-releng/fxci-config
+
+## Tracked repositories (populated from fxci-config at setup time)
+# taskgraph is required, all others are optional
+repos:
+  - name: taskcluster/taskgraph
+    path: /path/to/taskcluster/taskgraph
+  - name: mozilla-releng/scriptworker-scripts
+    path: /path/to/scriptworker-scripts
+  # ... parsed from fxci-config
