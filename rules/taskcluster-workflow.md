@@ -179,12 +179,12 @@ DECISION_TASK_ID=$(gh api "repos/<org/repo>/commits/$HEAD_SHA/check-runs" \
    watch --no-title --errexit taskcluster task status $DECISION_TASK_ID
    ```
    On failure: `taskcluster task log $DECISION_TASK_ID`
-2. Watch each dependency task before watching the target task. Do NOT jump straight to
-   `taskcluster group list` or `taskcluster group status` — they give false assurance.
+2. Watch each dependency task before watching the target task.
 3. ALWAYS read the target task's logs (`taskcluster task log $TASK_ID`), even if green.
 4. If the task produces artifacts, check those too.
 5. Only after the target task succeeds, use `taskcluster group status $DECISION_TASK_ID`
    to validate the full graph.
+6. If a task fails, use `taskcluster group list $DECISION_TASK_ID` to find what went wrong.
 
 Other useful commands:
 ```bash
