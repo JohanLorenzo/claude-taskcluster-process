@@ -257,12 +257,15 @@ def test_main_exits_without_prompt_when_no_changes(tmp_path, caplog):
     tg.mkdir(parents=True)
     mtg = tmp_path / "mozilla-releng" / "mozilla-taskgraph"
     mtg.mkdir(parents=True)
+    fxci = tmp_path / "mozilla-releng" / "fxci-config"
+    fxci.mkdir(parents=True)
+    (fxci / "projects.yml").write_text("")
     local_config_file = tmp_path / "CLAUDE.local.md"
     repos = [
         {"name": "taskcluster/taskgraph", "path": str(tg)},
         {"name": "mozilla-releng/mozilla-taskgraph", "path": str(mtg)},
     ]
-    local_config_file.write_text(local_config.render_local_config(tg, mtg, None, repos))
+    local_config_file.write_text(local_config.render_local_config(tg, mtg, fxci, repos))
     settings_file = _make_settings(
         tmp_path,
         extra={

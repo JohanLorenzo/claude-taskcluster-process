@@ -1,6 +1,12 @@
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+
+REQUIRED_REPOS = {
+    "taskgraph": "https://github.com/taskcluster/taskgraph",
+    "mozilla-taskgraph": "https://github.com/mozilla-releng/mozilla-taskgraph",
+    "fxci-config": "https://github.com/mozilla-releng/fxci-config",
+}
 CLAUDE_DIR = Path.home() / ".claude"
 RULES_DIR = CLAUDE_DIR / "rules"
 SETTINGS_FILE = CLAUDE_DIR / "settings.json"

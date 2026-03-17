@@ -68,10 +68,13 @@ def test_parse_local_config_content_parses_text_directly():
     assert "/tg" in result["repo_paths"]
 
 
-def test_build_repos_list_no_fxci(tmp_path):
+def test_build_repos_list_required_repos(tmp_path):
     tg = tmp_path / "taskcluster" / "taskgraph"
     mtg = tmp_path / "mozilla-releng" / "mozilla-taskgraph"
-    repos = local_config.build_repos_list(tg, mtg, None, tmp_path)
+    fxci = tmp_path / "mozilla-releng" / "fxci-config"
+    fxci.mkdir(parents=True)
+    (fxci / "projects.yml").write_text("")
+    repos = local_config.build_repos_list(tg, mtg, fxci, tmp_path)
     names = [r["name"] for r in repos]
     assert "taskcluster/taskgraph" in names
     assert "mozilla-releng/mozilla-taskgraph" in names
@@ -184,26 +187,36 @@ def test_compute_local_config_update_no_taskgraph_repo_returns_empty(tmp_path):
     assert repos == []
 
 
-def test_compute_local_config_update_no_mozilla_taskgraph_repo_returns_empty(tmp_path):
+def test_compute_local_config_update_no_mozilla_taskgraph_repo_exits_when_not_found(
+    tmp_path,
+):
+    tg = tmp_path / "taskcluster" / "taskgraph"
+    tg.mkdir(parents=True)
     config_file = tmp_path / "CLAUDE.local.md"
-    config_file.write_text("taskgraph_repo: /tg\n# no mozilla_taskgraph_repo\n")
-    with patch.object(local_config, "LOCAL_CONFIG_FILE", config_file):
-        diff, new_content, repos = local_config.compute_local_config_update()
-    assert diff == []
-    assert new_content is None
-    assert repos == []
+    config_file.write_text(f"taskgraph_repo: {tg}\n# no mozilla_taskgraph_repo\n")
+    with (
+        patch.object(local_config, "LOCAL_CONFIG_FILE", config_file),
+        patch("builtins.input", return_value=str(tmp_path)),
+        pytest.raises(SystemExit),
+    ):
+        local_config.compute_local_config_update()
 
 
 def test_compute_local_config_update_missing_taskgraph_exits(tmp_path):
     config_file = tmp_path / "CLAUDE.local.md"
     mtg = tmp_path / "mozilla-releng" / "mozilla-taskgraph"
     mtg.mkdir(parents=True)
+    fxci = tmp_path / "mozilla-releng" / "fxci-config"
+    fxci.mkdir(parents=True)
+    (fxci / "projects.yml").write_text("")
     config_file.write_text(
         "taskgraph_repo: /nonexistent/taskcluster/taskgraph\n"
         f"mozilla_taskgraph_repo: {mtg}\n"
+        f"fxci_config_repo: {fxci}\n"
     )
     with (
         patch.object(local_config, "LOCAL_CONFIG_FILE", config_file),
+        patch("builtins.input", return_value=str(tmp_path)),
         pytest.raises(SystemExit),
     ):
         local_config.compute_local_config_update()
@@ -213,15 +226,79 @@ def test_compute_local_config_update_missing_mozilla_taskgraph_exits(tmp_path):
     config_file = tmp_path / "CLAUDE.local.md"
     tg = tmp_path / "taskcluster" / "taskgraph"
     tg.mkdir(parents=True)
+    fxci = tmp_path / "mozilla-releng" / "fxci-config"
+    fxci.mkdir(parents=True)
+    (fxci / "projects.yml").write_text("")
     config_file.write_text(
         f"taskgraph_repo: {tg}\n"
         "mozilla_taskgraph_repo: /nonexistent/mozilla-releng/mozilla-taskgraph\n"
+        f"fxci_config_repo: {fxci}\n"
     )
     with (
         patch.object(local_config, "LOCAL_CONFIG_FILE", config_file),
+        patch("builtins.input", return_value=str(tmp_path)),
         pytest.raises(SystemExit),
     ):
         local_config.compute_local_config_update()
+
+
+def test_compute_local_config_update_discovers_missing_mozilla_taskgraph(tmp_path):
+    tg = tmp_path / "taskcluster" / "taskgraph"
+    tg.mkdir(parents=True)
+    fxci = tmp_path / "mozilla-releng" / "fxci-config"
+    fxci.mkdir(parents=True)
+    (fxci / "projects.yml").write_text("")
+    mtg = tmp_path / "mozilla-releng" / "mozilla-taskgraph"
+    mtg.mkdir(parents=True)
+    (mtg / "pyproject.toml").write_text('[project]\nname = "mozilla-taskgraph"\n')
+    config_file = tmp_path / "CLAUDE.local.md"
+    config_file.write_text(
+        f"taskgraph_repo: {tg}\n"
+        f"fxci_config_repo: {fxci}\n"
+        "\n## Tracked repositories\nrepos:\n"
+        f"  - name: taskcluster/taskgraph\n    path: {tg}\n"
+    )
+    with (
+        patch.object(local_config, "LOCAL_CONFIG_FILE", config_file),
+        patch("builtins.input", return_value=str(tmp_path)),
+    ):
+        diff, new_content, repos = local_config.compute_local_config_update()
+
+    assert diff
+    assert "mozilla_taskgraph_repo" in new_content
+    assert any(r["name"] == "mozilla-releng/mozilla-taskgraph" for r in repos)
+
+
+def test_compute_local_config_update_exits_when_no_mozilla_taskgraph_candidate(
+    tmp_path,
+):
+    tg = tmp_path / "taskcluster" / "taskgraph"
+    tg.mkdir(parents=True)
+    fxci = tmp_path / "mozilla-releng" / "fxci-config"
+    fxci.mkdir(parents=True)
+    (fxci / "projects.yml").write_text("")
+    config_file = tmp_path / "CLAUDE.local.md"
+    config_file.write_text(f"taskgraph_repo: {tg}\nfxci_config_repo: {fxci}\n")
+    with (
+        patch.object(local_config, "LOCAL_CONFIG_FILE", config_file),
+        patch("builtins.input", return_value=str(tmp_path)),
+        pytest.raises(SystemExit),
+    ):
+        local_config.compute_local_config_update()
+
+
+def test_pick_repo_required_missing_shows_hint(caplog):
+    with (
+        caplog.at_level(logging.ERROR),
+        pytest.raises(SystemExit),
+    ):
+        local_config.pick_repo(
+            [],
+            "mozilla-taskgraph",
+            required=True,
+            hint="Clone it first:\n  git clone https://github.com/mozilla-releng/mozilla-taskgraph",
+        )
+    assert "Clone it first" in caplog.text
 
 
 def test_get_search_root_valid_dir(tmp_path):
@@ -350,12 +427,14 @@ def test_find_repo_candidates_no_duplicates_across_pyproject_and_init(tmp_path):
     assert taskgraph.count(tg) == 1
 
 
-def test_render_local_config_without_fxci():
+def test_render_local_config_with_required_repos():
     repos = [{"name": "taskcluster/taskgraph", "path": "/tg"}]
-    content = local_config.render_local_config(Path("/tg"), Path("/mtg"), None, repos)
+    content = local_config.render_local_config(
+        Path("/tg"), Path("/mtg"), Path("/fxci"), repos
+    )
     assert "taskgraph_repo: /tg" in content
     assert "mozilla_taskgraph_repo: /mtg" in content
-    assert "fxci_config_repo" not in content
+    assert "fxci_config_repo: /fxci" in content
     assert "taskcluster/taskgraph" in content
 
 
@@ -514,18 +593,21 @@ def test_pick_repo_optional_missing_returns_none():
     assert local_config.pick_repo([], "mything", required=False) is None
 
 
-def _make_tg_and_mtg(tmp_path):
+def _make_required_repos(tmp_path):
     tg_dir = tmp_path / "git" / "taskcluster" / "taskgraph"
     tg_dir.mkdir(parents=True)
     (tg_dir / "pyproject.toml").write_text('[project]\nname = "taskgraph"\n')
     mtg_dir = tmp_path / "git" / "mozilla-releng" / "mozilla-taskgraph"
     mtg_dir.mkdir(parents=True)
     (mtg_dir / "pyproject.toml").write_text('[project]\nname = "mozilla-taskgraph"\n')
-    return tg_dir, mtg_dir
+    fxci_dir = tmp_path / "git" / "mozilla-releng" / "fxci-config"
+    fxci_dir.mkdir(parents=True)
+    (fxci_dir / "pyproject.toml").write_text('[project]\nname = "fxci-config"\n')
+    return tg_dir, mtg_dir, fxci_dir
 
 
 def test_generate_local_config_finds_taskgraph(tmp_path):
-    tg_dir, _mtg_dir = _make_tg_and_mtg(tmp_path)
+    tg_dir, _mtg_dir, _fxci_dir = _make_required_repos(tmp_path)
 
     inputs = [str(tmp_path / "git"), "y"]
     written_content = {}
@@ -544,7 +626,7 @@ def test_generate_local_config_finds_taskgraph(tmp_path):
 
 
 def test_generate_local_config_finds_mozilla_taskgraph(tmp_path):
-    _tg_dir, mtg_dir = _make_tg_and_mtg(tmp_path)
+    _tg_dir, mtg_dir, _fxci_dir = _make_required_repos(tmp_path)
 
     inputs = [str(tmp_path / "git"), "y"]
     written_content = {}
@@ -566,6 +648,9 @@ def test_generate_local_config_fails_when_mozilla_taskgraph_not_found(tmp_path):
     tg_dir = tmp_path / "git" / "taskcluster" / "taskgraph"
     tg_dir.mkdir(parents=True)
     (tg_dir / "pyproject.toml").write_text('[project]\nname = "taskgraph"\n')
+    fxci_dir = tmp_path / "git" / "mozilla-releng" / "fxci-config"
+    fxci_dir.mkdir(parents=True)
+    (fxci_dir / "pyproject.toml").write_text('[project]\nname = "fxci-config"\n')
     # No mozilla-taskgraph directory
 
     with (
@@ -577,11 +662,7 @@ def test_generate_local_config_fails_when_mozilla_taskgraph_not_found(tmp_path):
 
 
 def test_generate_local_config_finds_fxci_config(tmp_path):
-    _tg_dir, _mtg_dir = _make_tg_and_mtg(tmp_path)
-
-    fxci_dir = tmp_path / "git" / "mozilla-releng" / "fxci-config"
-    fxci_dir.mkdir(parents=True)
-    (fxci_dir / "pyproject.toml").write_text('[project]\nname = "fxci-config"\n')
+    _tg_dir, _mtg_dir, fxci_dir = _make_required_repos(tmp_path)
 
     inputs = [str(tmp_path / "git"), "y"]
     written_content = {}
@@ -600,7 +681,12 @@ def test_generate_local_config_finds_fxci_config(tmp_path):
 
 
 def test_generate_local_config_picks_fxci_config_when_multiple(tmp_path):
-    _tg_dir, _mtg_dir = _make_tg_and_mtg(tmp_path)
+    tg_dir = tmp_path / "git" / "taskcluster" / "taskgraph"
+    tg_dir.mkdir(parents=True)
+    (tg_dir / "pyproject.toml").write_text('[project]\nname = "taskgraph"\n')
+    mtg_dir = tmp_path / "git" / "mozilla-releng" / "mozilla-taskgraph"
+    mtg_dir.mkdir(parents=True)
+    (mtg_dir / "pyproject.toml").write_text('[project]\nname = "mozilla-taskgraph"\n')
 
     fxci1 = tmp_path / "git" / "taskcluster" / "fxci-config"
     fxci1.mkdir(parents=True)
@@ -647,7 +733,7 @@ def test_generate_local_config_skipped_when_exists(tmp_path):
 
 
 def test_generate_local_config_aborted_on_no(tmp_path):
-    _tg_dir, _mtg_dir = _make_tg_and_mtg(tmp_path)
+    _tg_dir, _mtg_dir, _fxci_dir = _make_required_repos(tmp_path)
 
     inputs = [str(tmp_path / "git"), "n"]
     with (

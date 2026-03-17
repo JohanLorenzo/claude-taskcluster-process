@@ -4,7 +4,7 @@ import re
 import sys
 from pathlib import Path
 
-from .constants import LOCAL_CONFIG_FILE
+from .constants import LOCAL_CONFIG_FILE, REQUIRED_REPOS
 from .utils import unified_diff
 
 logger = logging.getLogger(__name__)
@@ -119,12 +119,11 @@ def build_repos_list(
     mtg_slug = "/".join(mozilla_taskgraph_repo.parts[-2:])
     if {"name": mtg_slug, "path": str(mozilla_taskgraph_repo)} not in repos:
         repos.append({"name": mtg_slug, "path": str(mozilla_taskgraph_repo)})
-    if fxci_config_repo:
-        existing = {r["name"] for r in repos}
-        for r in discover_tracked_repos(fxci_config_repo, search_root):
-            if r["name"] not in existing:
-                repos.append(r)
-                existing.add(r["name"])
+    existing = {r["name"] for r in repos}
+    for r in discover_tracked_repos(fxci_config_repo, search_root):
+        if r["name"] not in existing:
+            repos.append(r)
+            existing.add(r["name"])
     return repos
 
 
@@ -144,7 +143,6 @@ def parse_local_config_content(text):
 def render_local_config(
     taskgraph_repo, mozilla_taskgraph_repo, fxci_config_repo, repos
 ):
-    fxci_line = f"fxci_config_repo: {fxci_config_repo}\n" if fxci_config_repo else ""
     repo_lines = "".join(
         f"  - name: {r['name']}\n    path: {r['path']}\n" for r in repos
     )
@@ -152,7 +150,7 @@ def render_local_config(
         "# Local configuration — DO NOT COMMIT\n\n"
         f"## Required paths\ntaskgraph_repo: {taskgraph_repo}\n"
         f"mozilla_taskgraph_repo: {mozilla_taskgraph_repo}\n"
-        f"{fxci_line}"
+        f"fxci_config_repo: {fxci_config_repo}\n"
         f"\n## Tracked repositories\nrepos:\n{repo_lines}"
     )
 
@@ -163,18 +161,39 @@ def compute_local_config_update():
     old_content = LOCAL_CONFIG_FILE.read_text()
     config = parse_local_config_content(old_content)
     taskgraph_repo = config["taskgraph_repo"]
+    if not taskgraph_repo:
+        return [], None, []
     mozilla_taskgraph_repo = config["mozilla_taskgraph_repo"]
     fxci_config_repo = config["fxci_config_repo"]
-    if not taskgraph_repo or not mozilla_taskgraph_repo:
-        return [], None, []
+    root = get_search_root()
+    _, fxci_candidates, mtg_candidates = find_repo_candidates(root)
+    if not mozilla_taskgraph_repo:
+        mozilla_taskgraph_repo = pick_repo(
+            mtg_candidates,
+            "mozilla-taskgraph",
+            required=True,
+            hint=f"Clone it first:\n  git clone {REQUIRED_REPOS['mozilla-taskgraph']}",
+        )
+    if not fxci_config_repo:
+        fxci_config_repo = pick_repo(
+            fxci_candidates,
+            "fxci-config",
+            required=True,
+            hint=f"Clone it first:\n  git clone {REQUIRED_REPOS['fxci-config']}",
+        )
     for label, path in [
         ("taskgraph", taskgraph_repo),
         ("mozilla-taskgraph", mozilla_taskgraph_repo),
+        ("fxci-config", fxci_config_repo),
     ]:
         if not path.is_dir():
-            logger.error("ERROR: %s not found at %s", label, path)
+            logger.error(
+                "ERROR: %s not found at %s\n%s",
+                label,
+                path,
+                f"Clone it first:\n  git clone {REQUIRED_REPOS[label]}",
+            )
             sys.exit(1)
-    root = get_search_root()
     repos = build_repos_list(
         taskgraph_repo, mozilla_taskgraph_repo, fxci_config_repo, root
     )
@@ -199,10 +218,13 @@ def get_search_root():
     return root
 
 
-def pick_repo(candidates, label, *, required):
+def pick_repo(candidates, label, *, required, hint=None):
     if not candidates:
         if required:
-            logger.error("ERROR: Could not find a %s checkout.", label)
+            msg = f"ERROR: Could not find a {label} checkout."
+            if hint:
+                msg += f"\n{hint}"
+            logger.error(msg)
             sys.exit(1)
         logger.info("%s not found — skipping.", label)
         return None
@@ -222,11 +244,24 @@ def generate_local_config():
     taskgraph_candidates, fxci_candidates, mozilla_taskgraph_candidates = (
         find_repo_candidates(root)
     )
-    taskgraph_repo = pick_repo(taskgraph_candidates, "taskgraph", required=True)
-    mozilla_taskgraph_repo = pick_repo(
-        mozilla_taskgraph_candidates, "mozilla-taskgraph", required=True
+    taskgraph_repo = pick_repo(
+        taskgraph_candidates,
+        "taskgraph",
+        required=True,
+        hint=f"Clone it first:\n  git clone {REQUIRED_REPOS['taskgraph']}",
     )
-    fxci_config_repo = pick_repo(fxci_candidates, "fxci-config", required=False)
+    mozilla_taskgraph_repo = pick_repo(
+        mozilla_taskgraph_candidates,
+        "mozilla-taskgraph",
+        required=True,
+        hint=f"Clone it first:\n  git clone {REQUIRED_REPOS['mozilla-taskgraph']}",
+    )
+    fxci_config_repo = pick_repo(
+        fxci_candidates,
+        "fxci-config",
+        required=True,
+        hint=f"Clone it first:\n  git clone {REQUIRED_REPOS['fxci-config']}",
+    )
     repos = build_repos_list(
         taskgraph_repo, mozilla_taskgraph_repo, fxci_config_repo, root
     )
