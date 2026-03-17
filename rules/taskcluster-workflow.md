@@ -12,6 +12,8 @@ uv run --with-editable "<taskgraph_repo>" taskgraph
 - On failures: stop immediately and report findings to the user. Do not retry with the
   same broken approach.
 - Speed: prefer local validation → local testing → direct submission → push to PR.
+- One commit per changed taskgraph kind — start upstream dependencies, work toward
+  leaf kinds.
 
 ## Taskcluster instances
 
@@ -196,10 +198,24 @@ taskcluster download artifact $DECISION_TASK_ID public/task-graph.json /tmp/task
 Only use `gh api` to get the decision task ID. For everything else, use `gh pr list`,
 local git commands, and the `taskcluster` CLI.
 
-### Step 8: Complete
+### Step 8: Update PR description with verification
 
-After a PR is merged (or ready for review), write a GitHub comment explaining what
-was verified. Include links to tasks and relevant log extracts.
+After every push, update the PR description with what was verified for each commit.
+Task links expire quickly, so the PR must capture the relevant log output directly.
+
+Template:
+
+~~~markdown
+## Verification
+
+### `<short-sha>` — `<commit-message>`
+- [<task-name>](<taskcluster-task-url>)
+  ```
+  <relevant extract from task logs showing success or key output>
+  ```
+
+(Repeat for each commit. List all verified tasks per commit.)
+~~~
 
 ## Reference: fxci-config validation
 
