@@ -26,7 +26,29 @@ uv run --with-editable "<taskgraph_repo>" taskgraph
 - For scriptworker tasks: always start with staging
 - Otherwise → production
 
-### Step 2: Sign in
+### Step 2: Ensure taskgraph is initialized
+
+Check whether `.taskcluster.yml` in the repo root creates a single decision task that
+runs `taskgraph decision`. If it does, taskgraph is already set up — skip this step.
+
+Otherwise (`.taskcluster.yml` missing, or it exists but doesn't use taskgraph), the
+repo needs initialization. Prerequisites: must be in a git repo with a GitHub remote.
+
+If `.taskcluster.yml` exists but doesn't use taskgraph, pass `--force` to overwrite:
+```bash
+uv run --with-editable "<taskgraph_repo>" taskgraph init --force
+```
+
+If `.taskcluster.yml` doesn't exist:
+```bash
+uv run --with-editable "<taskgraph_repo>" taskgraph init
+```
+
+This generates `.taskcluster.yml`, `taskcluster/config.yml`, kind definitions, a
+sample Dockerfile, and a sample transform module. Review and commit the generated
+files before proceeding.
+
+### Step 3: Sign in
 
 Replace `<RANDOM>` with a 7-letter random hash (e.g., `xk4mfqz`). Always split into
 three separate commands (one approval each):
@@ -44,9 +66,9 @@ taskcluster signin \
 source /tmp/tc-creds.sh
 ```
 
-### Step 3: Validate locally
+### Step 4: Validate locally
 
-Gate: must pass before proceeding to step 4.
+Gate: must pass before proceeding to step 5.
 
 ```bash
 uv run --with-editable "<taskgraph_repo>" taskgraph target-graph \
@@ -54,9 +76,9 @@ uv run --with-editable "<taskgraph_repo>" taskgraph target-graph \
 ```
 On the Firefox repo: `./mach taskgraph target-graph -p <params>`
 
-### Step 4: Test
+### Step 5: Test
 
-Gate: must pass before proceeding to step 5.
+Gate: must pass before proceeding to step 6.
 
 Decision tree:
 
@@ -66,20 +88,20 @@ Decision tree:
     uv run --with-editable "<taskgraph_repo>[load-image]" taskgraph load-task $TASK_ID
   ```
 - Scriptworker task → spawn a local worker against the staging environment.
-- `load-task` fails or neither applies → direct task submission (steps 4a–4f below).
+- `load-task` fails or neither applies → direct task submission (steps 5a–5f below).
 
 **Direct task submission** (iterate without a full push cycle):
 
 Always split into separate commands:
 
-**Step 4a** — get the failed task definition:
+**Step 5a** — get the failed task definition:
 ```bash
 taskcluster task def $FAILED_TASK_ID > /tmp/task.json
 ```
 
-**Step 4b** — edit `/tmp/task.json` to fix the issue (payload, env, command, etc.)
+**Step 5b** — edit `/tmp/task.json` to fix the issue (payload, env, command, etc.)
 
-**Step 4c** — update timestamps:
+**Step 5c** — update timestamps:
 ```bash
 python3 -c "
 import json, datetime
@@ -92,7 +114,7 @@ json.dump(t, open('/tmp/task.json', 'w'), indent=2)
 "
 ```
 
-**Step 4d** — sign in with the task's required scopes (extract from `schedulerId`,
+**Step 5d** — sign in with the task's required scopes (extract from `schedulerId`,
 `provisionerId`, `workerType`, `routes`, and `scopes` fields):
 ```bash
 export TASKCLUSTER_ROOT_URL=<url-from-step-1>
@@ -110,21 +132,21 @@ taskcluster signin \
 source /tmp/tc-creds.sh
 ```
 
-**Step 4e** — generate a new task ID (separate command, save to variable):
+**Step 5e** — generate a new task ID (separate command, save to variable):
 ```bash
 TASK_ID=$(taskcluster slugid generate)
 ```
 
-**Step 4f** — submit:
+**Step 5f** — submit:
 ```bash
 taskcluster api queue createTask $TASK_ID < /tmp/task.json
 ```
 
 Once the task is green, port the fix back to the local code and commit.
 
-### Step 5: Push to PR
+### Step 6: Push to PR
 
-Only push to a PR after steps 3 and 4 pass.
+Only push to a PR after steps 4 and 5 pass.
 
 **Simulating non-PR events (release, push) from a PR:**
 
@@ -140,9 +162,9 @@ git reset --hard HEAD~1
 git push fork <branch> --force-with-lease
 ```
 
-### Step 6: Monitor
+### Step 7: Monitor
 
-Gate: target task must be green before proceeding to step 7.
+Gate: target task must be green before proceeding to step 8.
 
 **Getting the decision task ID** (the only allowed `gh api` call):
 ```bash
@@ -174,7 +196,7 @@ taskcluster download artifact $DECISION_TASK_ID public/task-graph.json /tmp/task
 Only use `gh api` to get the decision task ID. For everything else, use `gh pr list`,
 local git commands, and the `taskcluster` CLI.
 
-### Step 7: Complete
+### Step 8: Complete
 
 After a PR is merged (or ready for review), write a GitHub comment explaining what
 was verified. Include links to tasks and relevant log extracts.
