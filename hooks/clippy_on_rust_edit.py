@@ -3,9 +3,12 @@
 
 import json
 import logging
+import shutil
 import subprocess
 import sys
 from pathlib import Path
+
+CARGO = shutil.which("cargo") or "cargo"
 
 logger = logging.getLogger(__name__)
 
@@ -15,9 +18,9 @@ def check(tool_input, cwd=None):
     if not file_path.endswith(".rs"):
         return
     work_dir = str(Path(file_path).parent) if file_path else cwd
-    result = subprocess.run(
+    result = subprocess.run(  # noqa: S603
         [
-            "cargo",
+            CARGO,
             "clippy",
             "--quiet",
             "--",

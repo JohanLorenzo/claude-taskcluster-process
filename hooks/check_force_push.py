@@ -3,15 +3,19 @@
 
 import json
 import logging
+import shutil
 import subprocess
 import sys
+
+GH = shutil.which("gh") or "gh"
+GIT = shutil.which("git") or "git"
 
 logger = logging.getLogger(__name__)
 
 
 def _get_base_branch(cwd):
-    result = subprocess.run(
-        ["gh", "pr", "view", "--json", "baseRefName", "--jq", ".baseRefName"],
+    result = subprocess.run(  # noqa: S603
+        [GH, "pr", "view", "--json", "baseRefName", "--jq", ".baseRefName"],
         capture_output=True,
         check=False,
         text=True,
@@ -38,8 +42,8 @@ def _parse_remote_and_branch(command):
 
 def _is_ancestor(remote, base_branch, cwd):
     ref = f"{remote}/{base_branch}"
-    result = subprocess.run(
-        ["git", "-C", cwd, "merge-base", "--is-ancestor", ref, "HEAD"],
+    result = subprocess.run(  # noqa: S603
+        [GIT, "-C", cwd, "merge-base", "--is-ancestor", ref, "HEAD"],
         capture_output=True,
         check=False,
         text=True,

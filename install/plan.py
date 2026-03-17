@@ -1,5 +1,6 @@
 import json
 import logging
+import shutil
 import subprocess
 import sys
 from dataclasses import dataclass, field
@@ -14,6 +15,8 @@ from .settings import (
     settings_diff,
 )
 from .symlinks import compute_symlink_ops, print_symlink_ops
+
+GIT = shutil.which("git") or "git"
 
 logger = logging.getLogger(__name__)
 
@@ -103,8 +106,8 @@ def apply_changes(plan):
     _apply_symlinks(plan.actionable_ops)
     logger.info("\nDone.")
     if (
-        subprocess.run(
-            ["git", "remote", "get-url", "origin"], capture_output=True, check=False
+        subprocess.run(  # noqa: S603
+            [GIT, "remote", "get-url", "origin"], capture_output=True, check=False
         ).returncode
         == 0
     ):

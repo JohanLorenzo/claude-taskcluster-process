@@ -4,8 +4,12 @@
 import json
 import logging
 import re
+import shutil
 import subprocess
 import sys
+
+GIT = shutil.which("git") or "git"
+GH = shutil.which("gh") or "gh"
 
 logger = logging.getLogger(__name__)
 
@@ -22,8 +26,8 @@ def _parse_remote(command):
 
 
 def _get_remote_url(remote, cwd):
-    result = subprocess.run(
-        ["git", "-C", cwd, "remote", "get-url", remote],
+    result = subprocess.run(  # noqa: S603
+        [GIT, "-C", cwd, "remote", "get-url", remote],
         capture_output=True,
         check=False,
         text=True,
@@ -39,8 +43,8 @@ def _parse_org_repo(url):
 
 
 def _is_fork(org_repo):
-    result = subprocess.run(
-        ["gh", "repo", "view", org_repo, "--json", "isFork", "--jq", ".isFork"],
+    result = subprocess.run(  # noqa: S603
+        [GH, "repo", "view", org_repo, "--json", "isFork", "--jq", ".isFork"],
         capture_output=True,
         check=False,
         text=True,

@@ -1,7 +1,7 @@
 import logging
 from unittest.mock import MagicMock, patch
 
-from hooks.clippy_on_rust_edit import check
+from hooks.clippy_on_rust_edit import CARGO, check
 
 
 def test_rust_file_runs_clippy():
@@ -13,7 +13,7 @@ def test_rust_file_runs_clippy():
         check({"file_path": "/some/path/main.rs"})
     mock_run.assert_called_once()
     args = mock_run.call_args[0][0]
-    assert args[0] == "cargo"
+    assert args[0] == CARGO
     assert "clippy" in args
 
 

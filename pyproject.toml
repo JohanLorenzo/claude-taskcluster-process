@@ -22,8 +22,6 @@ ignore = [
   "ANN",    # type annotations — not required here
   "COM",    # trailing commas — handled by ruff format
   "CPY",    # copyright headers
-  "S603",   # subprocess with trusted input
-  "S607",   # partial executable path — intentional (git, gh, cargo on PATH)
 ]
 
 [tool.ruff.lint.per-file-ignores]
