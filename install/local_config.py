@@ -167,6 +167,13 @@ def compute_local_config_update():
     fxci_config_repo = config["fxci_config_repo"]
     if not taskgraph_repo or not mozilla_taskgraph_repo:
         return [], None, []
+    for label, path in [
+        ("taskgraph", taskgraph_repo),
+        ("mozilla-taskgraph", mozilla_taskgraph_repo),
+    ]:
+        if not path.is_dir():
+            logger.error("ERROR: %s not found at %s", label, path)
+            sys.exit(1)
     root = get_search_root()
     repos = build_repos_list(
         taskgraph_repo, mozilla_taskgraph_repo, fxci_config_repo, root

@@ -194,6 +194,36 @@ def test_compute_local_config_update_no_mozilla_taskgraph_repo_returns_empty(tmp
     assert repos == []
 
 
+def test_compute_local_config_update_missing_taskgraph_exits(tmp_path):
+    config_file = tmp_path / "CLAUDE.local.md"
+    mtg = tmp_path / "mozilla-releng" / "mozilla-taskgraph"
+    mtg.mkdir(parents=True)
+    config_file.write_text(
+        "taskgraph_repo: /nonexistent/taskcluster/taskgraph\n"
+        f"mozilla_taskgraph_repo: {mtg}\n"
+    )
+    with (
+        patch.object(local_config, "LOCAL_CONFIG_FILE", config_file),
+        pytest.raises(SystemExit),
+    ):
+        local_config.compute_local_config_update()
+
+
+def test_compute_local_config_update_missing_mozilla_taskgraph_exits(tmp_path):
+    config_file = tmp_path / "CLAUDE.local.md"
+    tg = tmp_path / "taskcluster" / "taskgraph"
+    tg.mkdir(parents=True)
+    config_file.write_text(
+        f"taskgraph_repo: {tg}\n"
+        "mozilla_taskgraph_repo: /nonexistent/mozilla-releng/mozilla-taskgraph\n"
+    )
+    with (
+        patch.object(local_config, "LOCAL_CONFIG_FILE", config_file),
+        pytest.raises(SystemExit),
+    ):
+        local_config.compute_local_config_update()
+
+
 def test_get_search_root_valid_dir(tmp_path):
     with patch("builtins.input", return_value=str(tmp_path)):
         assert local_config.get_search_root() == tmp_path
