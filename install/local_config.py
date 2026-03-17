@@ -119,6 +119,9 @@ def build_repos_list(
     mtg_slug = "/".join(mozilla_taskgraph_repo.parts[-2:])
     if {"name": mtg_slug, "path": str(mozilla_taskgraph_repo)} not in repos:
         repos.append({"name": mtg_slug, "path": str(mozilla_taskgraph_repo)})
+    fxci_slug = "/".join(fxci_config_repo.parts[-2:])
+    if {"name": fxci_slug, "path": str(fxci_config_repo)} not in repos:
+        repos.append({"name": fxci_slug, "path": str(fxci_config_repo)})
     existing = {r["name"] for r in repos}
     for r in discover_tracked_repos(fxci_config_repo, search_root):
         if r["name"] not in existing:

@@ -78,6 +78,7 @@ def test_build_repos_list_required_repos(tmp_path):
     names = [r["name"] for r in repos]
     assert "taskcluster/taskgraph" in names
     assert "mozilla-releng/mozilla-taskgraph" in names
+    assert "mozilla-releng/fxci-config" in names
 
 
 def test_build_repos_list_with_fxci_adds_discovered(tmp_path):
@@ -163,6 +164,7 @@ def test_compute_local_config_update_no_diff_when_current(tmp_path):
     repos = [
         {"name": "taskcluster/taskgraph", "path": str(tg)},
         {"name": "mozilla-releng/mozilla-taskgraph", "path": str(mtg)},
+        {"name": "mozilla-releng/fxci-config", "path": str(fxci)},
     ]
     current_content = local_config.render_local_config(tg, mtg, fxci, repos)
     config_file = tmp_path / "CLAUDE.local.md"

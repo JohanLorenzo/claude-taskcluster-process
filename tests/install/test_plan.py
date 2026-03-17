@@ -264,6 +264,7 @@ def test_main_exits_without_prompt_when_no_changes(tmp_path, caplog):
     repos = [
         {"name": "taskcluster/taskgraph", "path": str(tg)},
         {"name": "mozilla-releng/mozilla-taskgraph", "path": str(mtg)},
+        {"name": "mozilla-releng/fxci-config", "path": str(fxci)},
     ]
     local_config_file.write_text(local_config.render_local_config(tg, mtg, fxci, repos))
     settings_file = _make_settings(
@@ -273,7 +274,7 @@ def test_main_exits_without_prompt_when_no_changes(tmp_path, caplog):
             "permissions": {
                 "allow": [],
                 "defaultMode": "plan",
-                "additionalDirectories": [str(tg), str(mtg)],
+                "additionalDirectories": [str(tg), str(mtg), str(fxci)],
             },
         },
     )
