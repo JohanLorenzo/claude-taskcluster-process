@@ -5,7 +5,8 @@
 Plans must specify exactly what to change and test — no winging it during
 implementation. Each commit must list:
 - The files it touches
-- The end-to-end test to run before committing
+- The end-to-end test to run before committing. `target-graph` is necessary but
+  not sufficient: in-tree Docker images also require `build-image` to pass.
 
 Estimate token usage. If more than one context window is needed, make the plan
 resumable (clear entry points, saved state).
@@ -39,3 +40,4 @@ unilateral decisions to expand or change scope.
 When touching multiple repositories:
 - Link PRs in descriptions, indicate dependencies and merge order.
 - Merge in dependency order (upstream first).
+- Create and push the upstream PR before the downstream PR.

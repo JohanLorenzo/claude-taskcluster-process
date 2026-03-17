@@ -226,6 +226,11 @@ cd <fxci_config_repo> && uv run ci-admin diff --environment firefoxci
 ```
 where `<fxci_config_repo>` comes from `CLAUDE.local.md`.
 
+## Reference: fxci-config staging deployment
+
+Comment `/taskcluster apply-staging` on the PR (`/taskcluster` prefix required).
+Merging to `main` auto-deploys to production.
+
 ## Reference: Scriptworker-specific guidance
 
 - Use treeherder-cli to find a recent example of a similar task on `mozilla-release`.

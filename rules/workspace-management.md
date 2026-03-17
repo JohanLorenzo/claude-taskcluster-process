@@ -5,6 +5,12 @@
 If you touch any repository listed in `CLAUDE.local.md`, create a worktree before
 making changes. Use `EnterWorktree` to enter a new worktree.
 
+`EnterWorktree` only works on the primary repo. For secondary repos, create the
+worktree manually:
+```bash
+git worktree add <path> -b <branch> upstream/main
+```
+
 ## Cleanup at plan start
 
 When entering any tracked repository, list all existing worktrees:
