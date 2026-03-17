@@ -14,6 +14,8 @@ uv run --with-editable "<taskgraph_repo>" taskgraph
 - Speed: prefer local validation → local testing → direct submission → push to PR.
 - One commit per changed taskgraph kind — start upstream dependencies, work toward
   leaf kinds.
+- Reuse transforms from taskgraph and mozilla-taskgraph. Do not reimplement locally
+  what already exists upstream.
 
 ## Taskcluster instances
 
