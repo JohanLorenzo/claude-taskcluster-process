@@ -274,7 +274,7 @@ def test_main_exits_without_prompt_when_no_changes(tmp_path, caplog):
             "permissions": {
                 "allow": [],
                 "defaultMode": "plan",
-                "additionalDirectories": [str(tg), str(mtg), str(fxci)],
+                "additionalDirectories": [str(tmp_path), str(tg), str(mtg), str(fxci)],
             },
         },
     )
@@ -294,6 +294,7 @@ def test_main_exits_without_prompt_when_no_changes(tmp_path, caplog):
         patch.object(preflight, "RULES_DIR", rules_target),
         patch.object(preflight, "SETTINGS_FILE", settings_file),
         patch.object(preflight, "CLAUDE_DIR", tmp_path),
+        patch.object(install_plan, "REPO_ROOT", tmp_path),
         patch.object(install, "LOCAL_CONFIG_FILE", local_config_file),
         # First input: search root prompt. Second input: should never be reached.
         patch(

@@ -5,7 +5,7 @@ import subprocess
 import sys
 from dataclasses import dataclass, field
 
-from .constants import LOCAL_CONFIG_FILE, RULES_DIR, SETTINGS_FILE
+from .constants import LOCAL_CONFIG_FILE, REPO_ROOT, RULES_DIR, SETTINGS_FILE
 from .local_config import compute_local_config_update
 from .preflight import check_preflight_warnings
 from .settings import (
@@ -46,7 +46,7 @@ def plan_changes():
     if errors:
         sys.exit(1)
     local_config_diff, new_local_content, new_repos = compute_local_config_update()
-    new_repo_paths = [r["path"] for r in new_repos]
+    new_repo_paths = [str(REPO_ROOT)] + [r["path"] for r in new_repos]
     new_settings = compute_new_settings(
         current_settings, hooks_config, repo_paths=new_repo_paths
     )
