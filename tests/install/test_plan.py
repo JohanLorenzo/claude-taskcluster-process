@@ -255,9 +255,14 @@ def test_main_exits_without_prompt_when_no_changes(tmp_path, caplog):
     _write_json(hooks_cfg, {"PreToolUse": [], "PostToolUse": []})
     tg = tmp_path / "taskcluster" / "taskgraph"
     tg.mkdir(parents=True)
+    mtg = tmp_path / "mozilla-releng" / "mozilla-taskgraph"
+    mtg.mkdir(parents=True)
     local_config_file = tmp_path / "CLAUDE.local.md"
-    repos = [{"name": "taskcluster/taskgraph", "path": str(tg)}]
-    local_config_file.write_text(local_config.render_local_config(tg, None, repos))
+    repos = [
+        {"name": "taskcluster/taskgraph", "path": str(tg)},
+        {"name": "mozilla-releng/mozilla-taskgraph", "path": str(mtg)},
+    ]
+    local_config_file.write_text(local_config.render_local_config(tg, mtg, None, repos))
     settings_file = _make_settings(
         tmp_path,
         extra={
@@ -265,7 +270,7 @@ def test_main_exits_without_prompt_when_no_changes(tmp_path, caplog):
             "permissions": {
                 "allow": [],
                 "defaultMode": "plan",
-                "additionalDirectories": [str(tg)],
+                "additionalDirectories": [str(tg), str(mtg)],
             },
         },
     )

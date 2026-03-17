@@ -2,6 +2,7 @@
 
 ## Required paths
 taskgraph_repo: /path/to/taskcluster/taskgraph
+mozilla_taskgraph_repo: /path/to/mozilla-releng/mozilla-taskgraph
 fxci_config_repo: /path/to/mozilla-releng/fxci-config
 
 ## Tracked repositories (populated from fxci-config at setup time)

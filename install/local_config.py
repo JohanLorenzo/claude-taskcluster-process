@@ -45,7 +45,7 @@ def matches_pyproject_name(text, name):
 
 
 def scan_pyprojects(root):
-    taskgraph, fxci = [], []
+    taskgraph, fxci, mozilla_taskgraph = [], [], []
     for pyproject in _find_files(root, "pyproject.toml"):
         try:
             text = pyproject.read_text()
@@ -57,16 +57,21 @@ def scan_pyprojects(root):
                 taskgraph.append(candidate)
         if matches_pyproject_name(text, "fxci-config") and pyproject.parent not in fxci:
             fxci.append(pyproject.parent)
-    return taskgraph, fxci
+        if (
+            matches_pyproject_name(text, "mozilla-taskgraph")
+            and pyproject.parent not in mozilla_taskgraph
+        ):
+            mozilla_taskgraph.append(pyproject.parent)
+    return taskgraph, fxci, mozilla_taskgraph
 
 
 def find_repo_candidates(root):
-    taskgraph, fxci = scan_pyprojects(root)
+    taskgraph, fxci, mozilla_taskgraph = scan_pyprojects(root)
     for init in _find_files(root, "taskgraph/__init__.py"):
         candidate = _repo_root(init.parent.parent)
         if candidate not in taskgraph:
             taskgraph.append(candidate)
-    return taskgraph, fxci
+    return taskgraph, fxci, mozilla_taskgraph
 
 
 def parse_github_slugs(fxci_config_repo):
@@ -106,9 +111,14 @@ def discover_tracked_repos(fxci_config_repo, search_root):
     return [{"name": slug, "path": path} for slug, path in sorted(found.items())]
 
 
-def build_repos_list(taskgraph_repo, fxci_config_repo, search_root):
+def build_repos_list(
+    taskgraph_repo, mozilla_taskgraph_repo, fxci_config_repo, search_root
+):
     tg_slug = "/".join(taskgraph_repo.parts[-2:])
     repos = [{"name": tg_slug, "path": str(taskgraph_repo)}]
+    mtg_slug = "/".join(mozilla_taskgraph_repo.parts[-2:])
+    if {"name": mtg_slug, "path": str(mozilla_taskgraph_repo)} not in repos:
+        repos.append({"name": mtg_slug, "path": str(mozilla_taskgraph_repo)})
     if fxci_config_repo:
         existing = {r["name"] for r in repos}
         for r in discover_tracked_repos(fxci_config_repo, search_root):
@@ -125,12 +135,15 @@ def parse_local_config_content(text):
 
     return {
         "taskgraph_repo": get_path("taskgraph_repo"),
+        "mozilla_taskgraph_repo": get_path("mozilla_taskgraph_repo"),
         "fxci_config_repo": get_path("fxci_config_repo"),
         "repo_paths": re.findall(r"^\s+path:\s*(.+)$", text, re.MULTILINE),
     }
 
 
-def render_local_config(taskgraph_repo, fxci_config_repo, repos):
+def render_local_config(
+    taskgraph_repo, mozilla_taskgraph_repo, fxci_config_repo, repos
+):
     fxci_line = f"fxci_config_repo: {fxci_config_repo}\n" if fxci_config_repo else ""
     repo_lines = "".join(
         f"  - name: {r['name']}\n    path: {r['path']}\n" for r in repos
@@ -138,6 +151,7 @@ def render_local_config(taskgraph_repo, fxci_config_repo, repos):
     return (
         "# Local configuration — DO NOT COMMIT\n\n"
         f"## Required paths\ntaskgraph_repo: {taskgraph_repo}\n"
+        f"mozilla_taskgraph_repo: {mozilla_taskgraph_repo}\n"
         f"{fxci_line}"
         f"\n## Tracked repositories\nrepos:\n{repo_lines}"
     )
@@ -149,12 +163,17 @@ def compute_local_config_update():
     old_content = LOCAL_CONFIG_FILE.read_text()
     config = parse_local_config_content(old_content)
     taskgraph_repo = config["taskgraph_repo"]
+    mozilla_taskgraph_repo = config["mozilla_taskgraph_repo"]
     fxci_config_repo = config["fxci_config_repo"]
-    if not taskgraph_repo:
+    if not taskgraph_repo or not mozilla_taskgraph_repo:
         return [], None, []
     root = get_search_root()
-    repos = build_repos_list(taskgraph_repo, fxci_config_repo, root)
-    new_content = render_local_config(taskgraph_repo, fxci_config_repo, repos)
+    repos = build_repos_list(
+        taskgraph_repo, mozilla_taskgraph_repo, fxci_config_repo, root
+    )
+    new_content = render_local_config(
+        taskgraph_repo, mozilla_taskgraph_repo, fxci_config_repo, repos
+    )
     diff = unified_diff(
         old_content,
         new_content,
@@ -193,11 +212,20 @@ def generate_local_config():
     logger.info("\n--- CLAUDE.local.md setup ---")
     root = get_search_root()
     logger.info("\nSearching for repos under %s...", root)
-    taskgraph_candidates, fxci_candidates = find_repo_candidates(root)
+    taskgraph_candidates, fxci_candidates, mozilla_taskgraph_candidates = (
+        find_repo_candidates(root)
+    )
     taskgraph_repo = pick_repo(taskgraph_candidates, "taskgraph", required=True)
+    mozilla_taskgraph_repo = pick_repo(
+        mozilla_taskgraph_candidates, "mozilla-taskgraph", required=True
+    )
     fxci_config_repo = pick_repo(fxci_candidates, "fxci-config", required=False)
-    repos = build_repos_list(taskgraph_repo, fxci_config_repo, root)
-    content = render_local_config(taskgraph_repo, fxci_config_repo, repos)
+    repos = build_repos_list(
+        taskgraph_repo, mozilla_taskgraph_repo, fxci_config_repo, root
+    )
+    content = render_local_config(
+        taskgraph_repo, mozilla_taskgraph_repo, fxci_config_repo, repos
+    )
     logger.info("\n--- Generated CLAUDE.local.md ---")
     logger.info(content)
     if input("Write CLAUDE.local.md? [y/N]: ").strip().lower() != "y":
