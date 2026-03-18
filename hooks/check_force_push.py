@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Hook: block force push that rewrites base branch commits."""
+"""Hook: block force push to the upstream (non-fork) repository."""
 
 import json
 import logging
@@ -13,42 +13,37 @@ GIT = shutil.which("git") or "git"
 logger = logging.getLogger(__name__)
 
 
-def _get_base_branch(cwd):
+def _parse_remote(command):
+    parts = command.split()
+    args = [p for p in parts if not p.startswith("-")]
+    push_idx = args.index("push") if "push" in args else -1
+    if push_idx < 0 or push_idx + 1 >= len(args):
+        return "origin"
+    return args[push_idx + 1]
+
+
+def _get_remote_url(remote, cwd):
     result = subprocess.run(  # noqa: S603
-        [GH, "pr", "view", "--json", "baseRefName", "--jq", ".baseRefName"],
+        [GIT, "-C", cwd, "remote", "get-url", remote],
         capture_output=True,
         check=False,
         text=True,
-        cwd=cwd,
     )
-    if result.returncode != 0 or not result.stdout.strip():
+    if result.returncode != 0:
         return None
     return result.stdout.strip()
 
 
-def _parse_remote_and_branch(command):
-    parts = command.split()
-    args = [p for p in parts if not p.startswith("-")]
-    push_idx = args.index("push") if "push" in args else -1
-    if push_idx < 0:
-        return "origin", None
-    positional = args[push_idx + 1 :]
-    if len(positional) == 0:
-        return "origin", None
-    if len(positional) == 1:
-        return "origin", positional[0]
-    return positional[0], positional[1]
-
-
-def _is_ancestor(remote, base_branch, cwd):
-    ref = f"{remote}/{base_branch}"
+def _is_fork(remote_url):
     result = subprocess.run(  # noqa: S603
-        [GIT, "-C", cwd, "merge-base", "--is-ancestor", ref, "HEAD"],
+        [GH, "repo", "view", remote_url, "--json", "isFork", "--jq", ".isFork"],
         capture_output=True,
         check=False,
         text=True,
     )
-    return result.returncode == 0
+    if result.returncode != 0:
+        return False
+    return result.stdout.strip() == "true"
 
 
 def check(tool_input, cwd=None):
@@ -58,17 +53,15 @@ def check(tool_input, cwd=None):
     if "--force" not in command and "--force-with-lease" not in command:
         return True, ""
     effective_cwd = cwd or "."
-    remote, _ = _parse_remote_and_branch(command)
-    base_branch = _get_base_branch(effective_cwd)
-    if not base_branch:
+    remote = _parse_remote(command)
+    remote_url = _get_remote_url(remote, effective_cwd)
+    if remote_url and _is_fork(remote_url):
         return True, ""
-    if not _is_ancestor(remote, base_branch, effective_cwd):
-        return (
-            False,
-            f"Force push would rewrite commits from {remote}/{base_branch}. "
-            "Only rewrite your own commits.",
-        )
-    return True, ""
+    return (
+        False,
+        f"Force push to upstream repository '{remote}' is not allowed. "
+        "Use a fork instead.",
+    )
 
 
 def main():

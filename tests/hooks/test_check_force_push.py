@@ -4,41 +4,42 @@ from hooks.check_force_push import check
 from tests.helpers import make_run
 
 
-def _mock_force_push(base_branch, is_ancestor):
+def _mock_push(is_fork):
     def side_effect(cmd, **kwargs):
-        if "pr" in cmd and "view" in cmd:
-            return make_run(0, base_branch + "\n")
-        if "merge-base" in cmd:
-            return make_run(0 if is_ancestor else 1)
+        if "repo" in cmd and "view" in cmd:
+            return make_run(0, ("true" if is_fork else "false") + "\n")
+        if "remote" in cmd and "get-url" in cmd:
+            return make_run(0, "https://github.com/some/repo.git\n")
         return make_run(0)
 
     return side_effect
 
 
-def test_force_push_only_pr_commits_allowed():
+def test_force_push_to_upstream_blocked():
     with patch(
         "hooks.check_force_push.subprocess.run",
-        side_effect=_mock_force_push("main", is_ancestor=True),
+        side_effect=_mock_push(is_fork=False),
+    ):
+        allowed, reason = check(
+            {"command": "git push origin feature --force-with-lease"}, cwd="/tmp"
+        )
+    assert not allowed
+    assert "upstream" in reason
+
+
+def test_force_push_to_fork_allowed():
+    with patch(
+        "hooks.check_force_push.subprocess.run",
+        side_effect=_mock_push(is_fork=True),
     ):
         assert check(
-            {"command": "git push fork feature --force-with-lease"}, cwd="/tmp"
+            {"command": "git push origin worktree-taskgraph --force-with-lease"},
+            cwd="/tmp",
         ) == (True, "")
 
 
-def test_force_push_rewrites_base_commits_blocked():
-    with patch(
-        "hooks.check_force_push.subprocess.run",
-        side_effect=_mock_force_push("main", is_ancestor=False),
-    ):
-        allowed, reason = check(
-            {"command": "git push fork feature --force"}, cwd="/tmp"
-        )
-    assert not allowed
-    assert "rewrite" in reason
-
-
 def test_non_force_push_always_allowed():
-    assert check({"command": "git push fork feature"}, cwd="/tmp") == (True, "")
+    assert check({"command": "git push origin feature"}, cwd="/tmp") == (True, "")
 
 
 def test_non_push_always_allowed():
