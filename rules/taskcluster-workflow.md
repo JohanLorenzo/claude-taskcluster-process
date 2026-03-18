@@ -17,6 +17,13 @@ uv run --with-editable "<taskgraph_repo>" taskgraph
   leaf kinds.
 - Reuse transforms from taskgraph and mozilla-taskgraph. Do not reimplement locally
   what already exists upstream.
+- Shell state does not persist between Bash tool calls. Always inline env vars in the
+  same command that uses them (e.g. `TASKCLUSTER_ROOT_URL=... taskcluster ...`) or
+  `source` the creds file in the same command.
+- `watch` requires a TTY and will fail in the Bash tool. Use a polling loop instead:
+  ```bash
+  until TASKCLUSTER_ROOT_URL=<url> taskcluster task status $TASK_ID | grep -qvE 'pending|running'; do sleep 15; done
+  ```
 
 ## Taskcluster instances
 
@@ -53,16 +60,18 @@ This generates `.taskcluster.yml`, `taskcluster/config.yml`, kind definitions, a
 sample Dockerfile, and a sample transform module. Review and commit the generated
 files before proceeding.
 
+**Verify worker pools exist** before writing `.taskcluster.yml`. Check that
+`{trust-domain}-{1,3}/decision`, `{trust-domain}-{1,3}/linux-gcp`, and
+`{trust-domain}-{1,3}/linux-gw-gcp` are present in `worker-pools.yml` in fxci-config.
+If any are missing, add them to the fxci-config PR before proceeding.
+
 ### Step 3: Sign in
 
 Replace `<RANDOM>` with a 7-letter random hash (e.g., `xk4mfqz`). Always split into
-three separate commands (one approval each):
+two separate commands (one approval each):
 
 ```bash
-export TASKCLUSTER_ROOT_URL=<url-from-step-1>
-```
-```bash
-taskcluster signin \
+TASKCLUSTER_ROOT_URL=<url-from-step-1> taskcluster signin \
   -n 'mozilla-auth0/ad|Mozilla-LDAP|jlorenzo/claude-code-client-<RANDOM>' \
   --scope 'queue:get-artifact:public/*' --expires 1d \
   > /tmp/tc-creds.sh
@@ -124,10 +133,7 @@ json.dump(t, open('/tmp/task.json', 'w'), indent=2)
 **Step 5d** — sign in with the task's required scopes (extract from `schedulerId`,
 `provisionerId`, `workerType`, `routes`, and `scopes` fields):
 ```bash
-export TASKCLUSTER_ROOT_URL=<url-from-step-1>
-```
-```bash
-taskcluster signin \
+TASKCLUSTER_ROOT_URL=<url-from-step-1> taskcluster signin \
   -n 'mozilla-auth0/ad|Mozilla-LDAP|jlorenzo/claude-code-client-<RANDOM>' \
   --expires 1h \
   --scope 'queue:create-task:lowest:<provisionerId>/<workerType>' \
@@ -181,12 +187,12 @@ DECISION_TASK_ID=$(gh api "repos/<org/repo>/commits/$HEAD_SHA/check-runs" \
 ```
 
 **Monitoring protocol** (follow this order strictly):
-1. Watch the decision task first:
+1. Poll the decision task first:
    ```bash
-   watch --no-title --errexit taskcluster task status $DECISION_TASK_ID
+   until TASKCLUSTER_ROOT_URL=<url> taskcluster task status $DECISION_TASK_ID | grep -qvE 'pending|running'; do sleep 15; done
    ```
-   On failure: `taskcluster task log $DECISION_TASK_ID`
-2. Watch each dependency task before watching the target task.
+   On failure: `TASKCLUSTER_ROOT_URL=<url> taskcluster task log $DECISION_TASK_ID`
+2. Poll each dependency task before polling the target task.
 3. ALWAYS read the target task's logs (`taskcluster task log $TASK_ID`), even if green.
 4. If the task produces artifacts, check those too.
 5. Only after the target task succeeds, use `taskcluster group status $DECISION_TASK_ID`
@@ -195,9 +201,10 @@ DECISION_TASK_ID=$(gh api "repos/<org/repo>/commits/$HEAD_SHA/check-runs" \
 
 Other useful commands:
 ```bash
-taskcluster task def $TASK_ID
-taskcluster task log $TASK_ID
-taskcluster download artifact $DECISION_TASK_ID public/task-graph.json /tmp/task-graph.json
+source /tmp/tc-creds.sh
+TASKCLUSTER_ROOT_URL=<url> taskcluster task def $TASK_ID
+TASKCLUSTER_ROOT_URL=<url> taskcluster task log $TASK_ID
+TASKCLUSTER_ROOT_URL=<url> taskcluster download artifact $DECISION_TASK_ID public/task-graph.json /tmp/task-graph.json
 ```
 
 Only use `gh api` to get the decision task ID. For everything else, use `gh pr list`,
@@ -233,6 +240,10 @@ where `<fxci_config_repo>` comes from `CLAUDE.local.md`.
 
 Comment `/taskcluster apply-staging` on the PR (`/taskcluster` prefix required).
 Merging to `main` auto-deploys to production.
+
+When using a personal fork for staging validation, add a temporary project entry to
+fxci-config (same PR, separate commit) with the fork's repo URL, the correct
+trust domain, level-1 branches, and `github-taskgraph: true`. Remove it before merging.
 
 ## Reference: Scriptworker-specific guidance
 
