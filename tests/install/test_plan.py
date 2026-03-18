@@ -267,14 +267,18 @@ def test_main_exits_without_prompt_when_no_changes(tmp_path, caplog):
         {"name": "mozilla-releng/fxci-config", "path": str(fxci)},
     ]
     local_config_file.write_text(local_config.render_local_config(tg, mtg, fxci, repos))
+    repo_paths = [str(tmp_path), str(tg), str(mtg), str(fxci)]
+    worktree_rules = sorted(
+        f"Bash(git -C {p}/.claude/worktrees/:*)" for p in repo_paths
+    )
     settings_file = _make_settings(
         tmp_path,
         extra={
             "hooks": {"PreToolUse": [], "PostToolUse": []},
             "permissions": {
-                "allow": [],
+                "allow": worktree_rules,
                 "defaultMode": "plan",
-                "additionalDirectories": [str(tmp_path), str(tg), str(mtg), str(fxci)],
+                "additionalDirectories": repo_paths,
             },
         },
     )
