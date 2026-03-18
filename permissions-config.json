@@ -5,5 +5,28 @@
   "taskcluster_instances": [
     "https://firefox-ci-tc.services.mozilla.com",
     "https://stage.taskcluster.nonprod.webservices.mozgcp.net"
+  ],
+  "git_c_operations": [
+    "absorb",
+    "add",
+    "bisect",
+    "checkout",
+    "cherry-pick",
+    "clean",
+    "commit",
+    "fetch",
+    "grep",
+    "log",
+    "ls-tree",
+    "pull",
+    "push fork",
+    "rebase",
+    "reset",
+    "restore",
+    "rev-parse",
+    "show",
+    "stash",
+    "status",
+    "worktree"
   ]
 }

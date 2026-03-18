@@ -40,7 +40,6 @@ class Plan:
 def plan_changes():
     current_settings = load_settings()
     hooks_config = load_hooks_config()
-    managed_allow = load_permissions_config()
     symlink_ops = compute_symlink_ops()
     warnings, errors = check_preflight_warnings(symlink_ops)
     for e in errors:
@@ -49,6 +48,7 @@ def plan_changes():
         sys.exit(1)
     local_config_diff, new_local_content, new_repos = compute_local_config_update()
     new_repo_paths = [str(REPO_ROOT)] + [r["path"] for r in new_repos]
+    managed_allow = load_permissions_config(repo_paths=new_repo_paths)
     new_settings = compute_new_settings(
         current_settings,
         hooks_config,

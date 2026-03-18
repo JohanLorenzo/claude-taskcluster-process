@@ -53,7 +53,7 @@ _TC_POLL_COMMANDS = [
 ]
 
 
-def load_permissions_config():
+def load_permissions_config(repo_paths=None):
     if not PERMISSIONS_CONFIG_FILE.exists():
         return []
     with PERMISSIONS_CONFIG_FILE.open() as f:
@@ -67,6 +67,9 @@ def load_permissions_config():
             f"Bash(until TASKCLUSTER_ROOT_URL={url} {cmd}:*)"
             for cmd in _TC_POLL_COMMANDS
         )
+    git_ops = config.get("git_c_operations", [])
+    for path in repo_paths or []:
+        rules.extend(f"Bash(git -C {path} {op}:*)" for op in git_ops)
     return rules
 
 
