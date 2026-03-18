@@ -15,6 +15,10 @@
 - Tests belong in the same commit as the code they cover, not in a separate commit
 - Commit immediately after completing each step — never batch all commits at the end
 
+- When committing outside the primary working directory, use `git -C /path` instead of
+  `cd /path && git ...`. `cd`-chained commands may not match allow rules, while
+  `git -C /path add:*` and `git -C /path commit:*` do.
+
 ## GitHub Pull Requests
 - Rebase on the base branch of the upstream repository before creating a PR
 - Push the branch (`git push -u`) before running `gh pr create`
