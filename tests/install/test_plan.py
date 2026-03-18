@@ -283,10 +283,13 @@ def test_main_exits_without_prompt_when_no_changes(tmp_path, caplog):
     rules_target = tmp_path / "claude_rules"
     rules_target.mkdir()
 
+    empty_perms = tmp_path / "permissions-config.json"
+    empty_perms.write_text("{}")
     with (
         caplog.at_level(logging.INFO),
         patch.object(settings, "SETTINGS_FILE", settings_file),
         patch.object(settings, "HOOKS_CONFIG_FILE", hooks_cfg),
+        patch.object(settings, "PERMISSIONS_CONFIG_FILE", empty_perms),
         patch.object(settings, "REPO_ROOT", tmp_path),
         patch.object(local_config, "LOCAL_CONFIG_FILE", local_config_file),
         patch.object(symlinks, "REPO_ROOT", tmp_path),

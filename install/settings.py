@@ -3,7 +3,12 @@ import json
 import logging
 import sys
 
-from .constants import HOOKS_CONFIG_FILE, REPO_ROOT, SETTINGS_FILE
+from .constants import (
+    HOOKS_CONFIG_FILE,
+    PERMISSIONS_CONFIG_FILE,
+    REPO_ROOT,
+    SETTINGS_FILE,
+)
 from .utils import unified_diff
 
 logger = logging.getLogger(__name__)
@@ -35,12 +40,45 @@ def load_settings():
         sys.exit(1)
 
 
-def compute_new_settings(old_settings, hooks_config, repo_paths):
+_TC_READ_COMMANDS = [
+    "taskcluster task def",
+    "taskcluster task log",
+    "taskcluster task status",
+    "taskcluster group list",
+    "taskcluster group status",
+]
+_TC_POLL_COMMANDS = [
+    "taskcluster task status",
+    "taskcluster group status",
+]
+
+
+def load_permissions_config():
+    if not PERMISSIONS_CONFIG_FILE.exists():
+        return []
+    with PERMISSIONS_CONFIG_FILE.open() as f:
+        config = json.load(f)
+    rules = list(config.get("static", []))
+    for url in config.get("taskcluster_instances", []):
+        rules.extend(
+            f"Bash(TASKCLUSTER_ROOT_URL={url} {cmd}:*)" for cmd in _TC_READ_COMMANDS
+        )
+        rules.extend(
+            f"Bash(until TASKCLUSTER_ROOT_URL={url} {cmd}:*)"
+            for cmd in _TC_POLL_COMMANDS
+        )
+    return rules
+
+
+def compute_new_settings(old_settings, hooks_config, repo_paths, managed_allow=None):
     new_settings = copy.deepcopy(old_settings)
     new_settings["hooks"] = hooks_config
+    perms = new_settings.setdefault("permissions", {})
     if repo_paths:
-        perms = new_settings.setdefault("permissions", {})
         perms["additionalDirectories"] = repo_paths
+    if managed_allow:
+        existing = set(perms.get("allow", []))
+        perms["allow"] = sorted(existing | set(managed_allow))
     return new_settings
 
 

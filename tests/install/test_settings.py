@@ -121,6 +121,92 @@ def test_new_settings_preserves_other_permissions_keys(tmp_path):
     assert new["permissions"]["additionalDirectories"] == ["/p"]
 
 
+def test_load_permissions_config_generates_patterns(tmp_path):
+    cfg = tmp_path / "permissions-config.json"
+    cfg.write_text(
+        '{"static": ["Bash(git rebase:*)"], "taskcluster_instances": ["https://tc.example.com"]}'
+    )
+    with patch.object(settings, "PERMISSIONS_CONFIG_FILE", cfg):
+        result = settings.load_permissions_config()
+    assert "Bash(git rebase:*)" in result
+    for cmd in (
+        "taskcluster task status",
+        "taskcluster task log",
+        "taskcluster task def",
+        "taskcluster group status",
+        "taskcluster group list",
+    ):
+        assert f"Bash(TASKCLUSTER_ROOT_URL=https://tc.example.com {cmd}:*)" in result
+    for cmd in ("taskcluster task status", "taskcluster group status"):
+        assert (
+            f"Bash(until TASKCLUSTER_ROOT_URL=https://tc.example.com {cmd}:*)" in result
+        )
+
+
+def test_load_permissions_config_missing_returns_empty(tmp_path):
+    with patch.object(settings, "PERMISSIONS_CONFIG_FILE", tmp_path / "missing.json"):
+        assert settings.load_permissions_config() == []
+
+
+def test_new_settings_adds_managed_allow_rules(tmp_path):
+    settings_file = _make_settings(
+        tmp_path,
+        extra={
+            "permissions": {
+                "allow": ["Bash(git log:*)", "Bash(ls:*)"],
+                "defaultMode": "plan",
+            }
+        },
+    )
+    with patch.object(settings, "SETTINGS_FILE", settings_file):
+        old = settings.load_settings()
+
+    managed = ["Bash(taskcluster task status:*)", "Bash(git diff:*)"]
+    new = settings.compute_new_settings(old, {}, repo_paths=[], managed_allow=managed)
+
+    assert new["permissions"]["allow"] == [
+        "Bash(git diff:*)",
+        "Bash(git log:*)",
+        "Bash(ls:*)",
+        "Bash(taskcluster task status:*)",
+    ]
+
+
+def test_new_settings_managed_allow_deduplicates(tmp_path):
+    settings_file = _make_settings(
+        tmp_path,
+        extra={
+            "permissions": {
+                "allow": ["Bash(git log:*)", "Bash(taskcluster task status:*)"],
+                "defaultMode": "plan",
+            }
+        },
+    )
+    with patch.object(settings, "SETTINGS_FILE", settings_file):
+        old = settings.load_settings()
+
+    managed = ["Bash(taskcluster task status:*)"]
+    new = settings.compute_new_settings(old, {}, repo_paths=[], managed_allow=managed)
+
+    assert new["permissions"]["allow"] == [
+        "Bash(git log:*)",
+        "Bash(taskcluster task status:*)",
+    ]
+
+
+def test_new_settings_managed_allow_empty_by_default(tmp_path):
+    settings_file = _make_settings(
+        tmp_path,
+        extra={"permissions": {"allow": ["Bash(git log:*)"], "defaultMode": "plan"}},
+    )
+    with patch.object(settings, "SETTINGS_FILE", settings_file):
+        old = settings.load_settings()
+
+    new = settings.compute_new_settings(old, {}, repo_paths=[])
+
+    assert new["permissions"]["allow"] == ["Bash(git log:*)"]
+
+
 def test_settings_diff_shows_unified_diff(tmp_path):
     old = {"key": "old_value"}
     new = {"key": "new_value"}

@@ -11,6 +11,7 @@ from .preflight import check_preflight_warnings
 from .settings import (
     compute_new_settings,
     load_hooks_config,
+    load_permissions_config,
     load_settings,
     settings_diff,
 )
@@ -39,6 +40,7 @@ class Plan:
 def plan_changes():
     current_settings = load_settings()
     hooks_config = load_hooks_config()
+    managed_allow = load_permissions_config()
     symlink_ops = compute_symlink_ops()
     warnings, errors = check_preflight_warnings(symlink_ops)
     for e in errors:
@@ -48,7 +50,10 @@ def plan_changes():
     local_config_diff, new_local_content, new_repos = compute_local_config_update()
     new_repo_paths = [str(REPO_ROOT)] + [r["path"] for r in new_repos]
     new_settings = compute_new_settings(
-        current_settings, hooks_config, repo_paths=new_repo_paths
+        current_settings,
+        hooks_config,
+        repo_paths=new_repo_paths,
+        managed_allow=managed_allow,
     )
     return Plan(
         local_config_diff=local_config_diff,
