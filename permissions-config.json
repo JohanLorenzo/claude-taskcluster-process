@@ -1,6 +1,7 @@
 {
   "static": [
-    "Bash(GIT_SEQUENCE_EDITOR=true git rebase:*)"
+    "Bash(GIT_SEQUENCE_EDITOR=true git rebase:*)",
+    "Bash(gh api:*)"
   ],
   "taskcluster_instances": [
     "https://firefox-ci-tc.services.mozilla.com",
