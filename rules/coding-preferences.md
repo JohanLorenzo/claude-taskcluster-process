@@ -22,6 +22,22 @@
 - Always use `--draft` when creating PRs
 - Reference related GitHub issues or Bugzilla bugs in the PR body
 
+PR body template (use HEREDOC with `gh pr create --body`):
+
+~~~markdown
+## Summary
+
+<1-3 bullet points describing what and why>
+
+## Merge order
+
+<Numbered list of merge sequence across repos. Omit section if single-repo change.>
+
+## Verification
+
+<How the change was tested — task links, log excerpts, local test output.>
+~~~
+
 ## API Interaction Rules
 - NEVER assume an API endpoint exists. Always verify endpoints work (via curl or equivalent) before writing implementation code around them.
 - When an API call returns 404 or unexpected results, stop and report findings rather than trying more unverified endpoints.
