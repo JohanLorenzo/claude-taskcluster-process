@@ -9,7 +9,7 @@ REQUIRED_TOOLS = {
     "gh": "Install from https://cli.github.com/",
     "uv": "Install from https://docs.astral.sh/uv/",
     "taskcluster": (
-        "Install via: npm install -g @taskcluster/client-web or pip install taskcluster"
+        "Install from https://github.com/taskcluster/taskcluster/tree/main/clients/client-shell"
     ),
 }
 OPTIONAL_TOOLS = {
