@@ -98,13 +98,43 @@ Gate: must pass before proceeding to step 6.
 
 Decision tree:
 
-- Task runs in a Docker container → test locally:
-  ```bash
-  DOCKER_DEFAULT_PLATFORM=linux/amd64 \
-    uv run --with-editable "<taskgraph_repo>[load-image]" taskgraph load-task $TASK_ID
-  ```
+- Task runs in a Docker container → test locally with `load-task` (see recipe below).
 - Scriptworker task → spawn a local worker against the staging environment.
 - `load-task` fails or neither applies → direct task submission (steps 5a–5f below).
+
+**`load-task` recipe for locally generated tasks**:
+
+1. Create a local params file with the real fork URL and current HEAD rev:
+   ```yaml
+   head_repository: https://github.com/<fork>/code-review
+   head_ref: <branch>
+   head_rev: <git rev-parse HEAD>
+   # ... other params
+   ```
+
+2. Generate the task definition:
+   ```bash
+   uv run --with-editable "<taskgraph_repo>" taskgraph target-graph \
+     --root taskcluster -p /tmp/local-params.yml --json 2>/dev/null \
+     | python3 -c "import sys,json; g=json.load(sys.stdin); print(json.dumps(g['<task-label>']['task']))" \
+     > /tmp/task.json
+   ```
+
+3. Run the task locally, using the staging task ID of the in-tree Docker image:
+   ```bash
+   source /tmp/tc-staging-creds.sh
+   DOCKER_DEFAULT_PLATFORM=linux/amd64 TASKCLUSTER_ROOT_URL=<staging-url> \
+     uv run --with-editable "<taskgraph_repo>[load-image]" taskgraph load-task \
+     --root taskcluster --image task-id=<docker-image-task-id> - < /tmp/task.json
+   ```
+
+   Mount the local checkout to skip the git clone (useful for fast iteration):
+   ```bash
+   --volume "<worktree-path>:/builds/worker/checkouts/vcs"
+   ```
+
+   **Note**: Compiled binaries (ruff, etc.) may segfault under qemu on Apple Silicon.
+   For pre-commit/ruff checks, run `pre-commit run -a` natively instead of inside `load-task`.
 
 **Direct task submission** (iterate without a full push cycle):
 
@@ -159,7 +189,10 @@ Once the task is green, port the fix back to the local code and commit.
 
 ### Step 6: Push to PR
 
-Push to the PR after each commit passes steps 4 and 5.
+For every commit being pushed: the step 5 test for that commit must have passed
+locally before pushing. For Docker-based tasks this means `load-task` must be green;
+for other task types, the equivalent test (local worker, direct submission) must pass.
+Never skip this — pushing to CI is not a substitute for local testing.
 
 **Simulating non-PR events (release, push) from a PR:**
 
