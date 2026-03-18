@@ -262,6 +262,20 @@ Template:
 (Repeat for each commit. List all verified tasks per commit.)
 ~~~
 
+## Reference: Taskcluster CLI credentials
+
+Credentials are stored in `~/.config/taskcluster.yml`. To clear them:
+```bash
+taskcluster config reset --all
+```
+Never reset credentials one field at a time — removing `clientId` first breaks all
+subsequent `taskcluster` commands (the CLI validates credentials before running anything,
+including other `config reset` calls).
+
+After clearing, public task artifacts (`task log`, `task status`, `group status`) work
+without credentials — just set `TASKCLUSTER_ROOT_URL`. Only authenticated operations
+(task creation, private artifacts) need `taskcluster signin`.
+
 ## Reference: fxci-config validation
 
 ```bash
