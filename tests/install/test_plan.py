@@ -260,14 +260,19 @@ def test_main_exits_without_prompt_when_no_changes(tmp_path, caplog):
     fxci = tmp_path / "mozilla-releng" / "fxci-config"
     fxci.mkdir(parents=True)
     (fxci / "projects.yml").write_text("")
+    tc = tmp_path / "taskcluster" / "taskcluster"
+    tc.mkdir(parents=True)
     local_config_file = tmp_path / "CLAUDE.local.md"
     repos = [
         {"name": "taskcluster/taskgraph", "path": str(tg)},
         {"name": "mozilla-releng/mozilla-taskgraph", "path": str(mtg)},
         {"name": "mozilla-releng/fxci-config", "path": str(fxci)},
+        {"name": "taskcluster/taskcluster", "path": str(tc)},
     ]
-    local_config_file.write_text(local_config.render_local_config(tg, mtg, fxci, repos))
-    repo_paths = [str(tmp_path), str(tg), str(mtg), str(fxci)]
+    local_config_file.write_text(
+        local_config.render_local_config(tg, mtg, fxci, tc, repos)
+    )
+    repo_paths = [str(tmp_path), str(tg), str(mtg), str(fxci), str(tc)]
     worktree_rules = sorted(
         f"Bash(git -C {p}/.claude/worktrees/:*)" for p in repo_paths
     )
