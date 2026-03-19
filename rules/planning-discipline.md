@@ -5,8 +5,9 @@
 Plans must specify exactly what to change and test — no winging it during
 implementation. Each commit must list:
 - The files it touches
-- The end-to-end test to run before committing. `target-graph` is necessary but
-  not sufficient: in-tree Docker images also require `build-image` to pass.
+- The end-to-end test to run before committing (exact command and expected
+  outcome). Domain-specific workflows may impose additional requirements — see
+  the relevant workflow document for the full verification chain.
 
 Estimate token usage. If more than one context window is needed, make the plan
 resumable (clear entry points, saved state).

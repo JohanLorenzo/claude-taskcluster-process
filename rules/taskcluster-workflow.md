@@ -32,6 +32,11 @@ uv run --with-editable "<taskgraph_repo>" taskgraph
 
 ## Process
 
+**Planning requirement**: before implementation, the plan must specify for each
+commit which Step 5 test method applies (load-task, direct submission, or local
+worker) and the exact task label to test. Do not defer this decision to
+implementation time.
+
 ### Step 1: Determine environment
 
 - Changing scopes, worker configs, or fxci-config? → staging
