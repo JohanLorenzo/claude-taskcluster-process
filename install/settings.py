@@ -53,7 +53,7 @@ _TC_POLL_COMMANDS = [
 ]
 
 
-def load_permissions_config(repo_paths=None):
+def load_permissions_config(repo_paths=None, taskgraph_repo=None):
     if not PERMISSIONS_CONFIG_FILE.exists():
         return []
     with PERMISSIONS_CONFIG_FILE.open() as f:
@@ -71,6 +71,12 @@ def load_permissions_config(repo_paths=None):
     for path in repo_paths or []:
         rules.extend(f"Bash(git -C {path} {op}:*)" for op in git_ops)
         rules.append(f"Bash(git -C {path}/.claude/worktrees/:*)")
+    if taskgraph_repo:
+        for extra in config.get("uv_taskgraph_extras", []):
+            suffix = f"[{extra}]" if extra else ""
+            rules.append(
+                f'Bash(uv run --with-editable "{taskgraph_repo}{suffix}" taskgraph:*)'
+            )
     return rules
 
 

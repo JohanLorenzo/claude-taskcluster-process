@@ -143,6 +143,26 @@ def test_load_permissions_config_generates_patterns(tmp_path):
         )
 
 
+def test_load_permissions_config_generates_uv_taskgraph_rules(tmp_path):
+    cfg = tmp_path / "permissions-config.json"
+    cfg.write_text('{"uv_taskgraph_extras": ["", "load-image"]}')
+    with patch.object(settings, "PERMISSIONS_CONFIG_FILE", cfg):
+        result = settings.load_permissions_config(taskgraph_repo="/path/to/taskgraph")
+    assert 'Bash(uv run --with-editable "/path/to/taskgraph" taskgraph:*)' in result
+    assert (
+        'Bash(uv run --with-editable "/path/to/taskgraph[load-image]" taskgraph:*)'
+        in result
+    )
+
+
+def test_load_permissions_config_no_uv_rules_without_taskgraph_repo(tmp_path):
+    cfg = tmp_path / "permissions-config.json"
+    cfg.write_text('{"uv_taskgraph_extras": ["", "load-image"]}')
+    with patch.object(settings, "PERMISSIONS_CONFIG_FILE", cfg):
+        result = settings.load_permissions_config()
+    assert not any("uv run" in r for r in result)
+
+
 def test_load_permissions_config_generates_git_c_rules(tmp_path):
     cfg = tmp_path / "permissions-config.json"
     cfg.write_text('{"git_c_operations": ["add", "commit"]}')

@@ -7,6 +7,7 @@
     "https://firefox-ci-tc.services.mozilla.com",
     "https://stage.taskcluster.nonprod.webservices.mozgcp.net"
   ],
+  "uv_taskgraph_extras": ["", "load-image"],
   "git_c_operations": [
     "absorb",
     "add",
