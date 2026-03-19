@@ -75,7 +75,7 @@ def load_permissions_config(repo_paths=None, taskgraph_repo=None):
         for extra in config.get("uv_taskgraph_extras", []):
             suffix = f"[{extra}]" if extra else ""
             rules.append(
-                f'Bash(uv run --with-editable "{taskgraph_repo}{suffix}" taskgraph:*)'
+                f"Bash(uv run --with-editable '{taskgraph_repo}{suffix}' taskgraph:*)"
             )
     return rules
 
