@@ -163,6 +163,9 @@ those tasks to `dependencies`. In-tree Docker images are a common case: replace
 `{"task-reference": "<docker-image>"}` with `{"taskId": "<actual-image-task-id>"}` and
 add the image task ID to `t["dependencies"]`.
 
+When submitting a task from a fork (staging or otherwise), always use level-1 workers,
+scopes, and secrets. Level 3 is production-only by design — forks run at level 1.
+
 **Step 5c** — update timestamps:
 ```bash
 python3 -c "
