@@ -157,6 +157,12 @@ taskcluster task def $FAILED_TASK_ID > /tmp/task.json
 
 **Step 5b** — edit `/tmp/task.json` to fix the issue (payload, env, command, etc.)
 
+If the task was generated from `taskgraph target-graph --json` (not fetched from a live
+task), resolve any `{"task-reference": "<name>"}` values to actual task IDs, and add
+those tasks to `dependencies`. In-tree Docker images are a common case: replace
+`{"task-reference": "<docker-image>"}` with `{"taskId": "<actual-image-task-id>"}` and
+add the image task ID to `t["dependencies"]`.
+
 **Step 5c** — update timestamps:
 ```bash
 python3 -c "
@@ -171,16 +177,21 @@ json.dump(t, open('/tmp/task.json', 'w'), indent=2)
 ```
 
 **Step 5d** — sign in with the task's required scopes (extract from `schedulerId`,
-`provisionerId`, `workerType`, `routes`, and `scopes` fields):
+`provisionerId`, `workerType`, `priority`, `routes`, and `scopes` fields):
 ```bash
 TASKCLUSTER_ROOT_URL=<url-from-step-1> taskcluster signin \
   -n 'mozilla-auth0/ad|Mozilla-LDAP|jlorenzo/claude-code-client-<RANDOM>' \
   --expires 1h \
-  --scope 'queue:create-task:lowest:<provisionerId>/<workerType>' \
+  --scope 'queue:create-task:<priority>:<provisionerId>/<workerType>' \
   --scope 'queue:scheduler-id:<schedulerId>' \
+  --scope 'queue:route:checks' \
   --scope '<any scope listed in the task definition>' \
   > /tmp/tc-creds.sh
 ```
+
+Use the task's actual `priority` value (`low`, `very-low`, etc.), not `lowest`.
+When a scope error occurs, read only the **"missing the following scopes"** section
+of the error — not the full "requires" list. Add only what is listed as missing.
 ```bash
 source /tmp/tc-creds.sh
 ```
