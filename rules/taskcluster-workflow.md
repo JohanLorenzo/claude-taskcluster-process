@@ -19,6 +19,9 @@ uv run --with-editable "<taskgraph_repo>" taskgraph
   what already exists upstream.
 - With run-task, tasks run as the `worker` user (non-root). Artifacts must be written
   to `/builds/worker/artifacts/` — the worker cannot write to `/` or other root paths.
+- Tasks that access a secret via TC proxy (`taskcluster-proxy: true` + `TASKCLUSTER_SECRET`)
+  must include `secrets:get:<secret-name>` in their own `scopes` field. No taskgraph
+  transform adds this automatically.
 - Shell state does not persist between Bash tool calls. Always inline env vars in the
   same command that uses them (e.g. `TASKCLUSTER_ROOT_URL=... taskcluster ...`) or
   `source` the creds file in the same command.
