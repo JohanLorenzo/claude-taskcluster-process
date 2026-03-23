@@ -10,6 +10,7 @@ REQUIRED_REPOS = {
 }
 CLAUDE_DIR = Path.home() / ".claude"
 RULES_DIR = CLAUDE_DIR / "rules"
+SKILLS_DIR = CLAUDE_DIR / "skills"
 SETTINGS_FILE = CLAUDE_DIR / "settings.json"
 HOOKS_CONFIG_FILE = REPO_ROOT / "hooks-config.json"
 PERMISSIONS_CONFIG_FILE = REPO_ROOT / "permissions-config.json"

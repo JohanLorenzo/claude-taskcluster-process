@@ -14,6 +14,10 @@ REQUIRED_TOOLS = {
 }
 OPTIONAL_TOOLS = {
     "cargo": "Install Rust from https://rustup.rs/ (needed for clippy_on_rust_edit).",
+    "moz-phab": (
+        "Run ./mach install-moz-phab from your firefox checkout"
+        " to enable Phabricator reviews."
+    ),
 }
 
 

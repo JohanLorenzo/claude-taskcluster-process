@@ -5,7 +5,7 @@ from unittest.mock import patch
 import pytest
 
 import install
-from install import local_config, preflight, settings, symlinks
+from install import local_config, preflight, settings, skills, symlinks
 from install import plan as install_plan
 from install.plan import Plan
 from install.tools import check_tools
@@ -44,6 +44,8 @@ def test_plan_has_changes_true_when_diff():
         new_settings={},
         symlink_ops=[],
         actionable_ops=[],
+        skill_ops=[],
+        actionable_skill_ops=[],
     )
     assert plan.has_changes
 
@@ -56,6 +58,8 @@ def test_plan_has_changes_false_when_empty():
         new_settings={},
         symlink_ops=[],
         actionable_ops=[],
+        skill_ops=[],
+        actionable_skill_ops=[],
     )
     assert not plan.has_changes
 
@@ -71,6 +75,8 @@ def test_plan_has_changes_true_when_actionable_ops(tmp_path):
         new_settings={},
         symlink_ops=[("create", src, target)],
         actionable_ops=[("create", src, target)],
+        skill_ops=[],
+        actionable_skill_ops=[],
     )
     assert plan.has_changes
 
@@ -84,6 +90,8 @@ def test_preview_changes_prints_no_change_when_up_to_date(caplog, tmp_path):
         new_settings={},
         symlink_ops=[],
         actionable_ops=[],
+        skill_ops=[],
+        actionable_skill_ops=[],
     )
     with (
         caplog.at_level(logging.INFO),
@@ -103,6 +111,8 @@ def test_preview_changes_prints_warnings(caplog, tmp_path):
         new_settings={},
         symlink_ops=[],
         actionable_ops=[],
+        skill_ops=[],
+        actionable_skill_ops=[],
         warnings=["WARNING: something"],
     )
     with (
@@ -124,6 +134,8 @@ def test_write_files_writes_settings(tmp_path):
         new_settings=new_settings,
         symlink_ops=[],
         actionable_ops=[],
+        skill_ops=[],
+        actionable_skill_ops=[],
     )
     with patch.object(install_plan, "SETTINGS_FILE", settings_file):
         install_plan.write_files(plan)
@@ -140,6 +152,8 @@ def test_write_files_writes_local_config_when_diff(tmp_path):
         new_settings={"model": "x"},
         symlink_ops=[],
         actionable_ops=[],
+        skill_ops=[],
+        actionable_skill_ops=[],
     )
     with (
         patch.object(install_plan, "LOCAL_CONFIG_FILE", local_config_file),
@@ -159,6 +173,8 @@ def test_write_files_skips_local_config_when_no_diff(tmp_path):
         new_settings={"model": "x"},
         symlink_ops=[],
         actionable_ops=[],
+        skill_ops=[],
+        actionable_skill_ops=[],
     )
     with (
         patch.object(install_plan, "LOCAL_CONFIG_FILE", local_config_file),
@@ -206,6 +222,8 @@ def test_apply_changes_orchestrates_all_steps(tmp_path):
     rules_target = tmp_path / "claude_rules"
     rules_target.mkdir()
     link = rules_target / "foo.md"
+    skills_target = tmp_path / "claude_skills"
+    skills_target.mkdir()
     plan = Plan(
         local_config_diff=[],
         new_local_content=None,
@@ -213,10 +231,13 @@ def test_apply_changes_orchestrates_all_steps(tmp_path):
         new_settings={"model": "updated"},
         symlink_ops=[("create", md, link)],
         actionable_ops=[("create", md, link)],
+        skill_ops=[],
+        actionable_skill_ops=[],
     )
     with (
         patch.object(install_plan, "SETTINGS_FILE", settings_file),
         patch.object(install_plan, "RULES_DIR", rules_target),
+        patch.object(install_plan, "SKILLS_DIR", skills_target),
     ):
         install_plan.apply_changes(plan)
     assert json.loads(settings_file.read_text()) == {"model": "updated"}
@@ -291,6 +312,8 @@ def test_main_exits_without_prompt_when_no_changes(tmp_path, caplog):
     rules_src.mkdir()
     rules_target = tmp_path / "claude_rules"
     rules_target.mkdir()
+    skills_target = tmp_path / "claude_skills"
+    skills_target.mkdir()
 
     empty_perms = tmp_path / "permissions-config.json"
     empty_perms.write_text("{}")
@@ -303,10 +326,14 @@ def test_main_exits_without_prompt_when_no_changes(tmp_path, caplog):
         patch.object(local_config, "LOCAL_CONFIG_FILE", local_config_file),
         patch.object(symlinks, "REPO_ROOT", tmp_path),
         patch.object(symlinks, "RULES_DIR", rules_target),
+        patch.object(skills, "REPO_ROOT", tmp_path),
+        patch.object(skills, "SKILLS_DIR", skills_target),
         patch.object(preflight, "RULES_DIR", rules_target),
+        patch.object(preflight, "SKILLS_DIR", skills_target),
         patch.object(preflight, "SETTINGS_FILE", settings_file),
         patch.object(preflight, "CLAUDE_DIR", tmp_path),
         patch.object(install_plan, "REPO_ROOT", tmp_path),
+        patch.object(install_plan, "SKILLS_DIR", skills_target),
         patch.object(install, "LOCAL_CONFIG_FILE", local_config_file),
         # First input: search root prompt. Second input: should never be reached.
         patch(
