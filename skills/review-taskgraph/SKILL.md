@@ -1,5 +1,5 @@
 ---
-name: Review Taskgraph
+name: review-taskgraph
 description: Review taskgraph-related patches (transforms, kind YAML, worker config) for correctness, best practices, and reuse of existing upstream utilities
 allowed-tools: Bash, Read, Grep, Glob
 argument-hint: "[PR-URL | D<revision> | commit-range]"
