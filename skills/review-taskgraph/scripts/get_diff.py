@@ -9,7 +9,7 @@ import sys
 def _detect_pr_range():
     """Try to detect and return the diff for an open PR on the current branch."""
     pr = subprocess.run(
-        ["gh", "pr", "view", "--json", "baseRefName,url,headRefName"],
+        ["gh", "pr", "view", "--json", "number,url,headRefName"],
         capture_output=True,
         text=True,
         check=False,
@@ -18,31 +18,20 @@ def _detect_pr_range():
         return None, None
     try:
         data = json.loads(pr.stdout)
-        base_ref = data["baseRefName"]
+        pr_number = str(data["number"])
         pr_url = data["url"]
         head_ref = data["headRefName"]
     except (json.JSONDecodeError, KeyError):
         return None, None
 
-    for remote_base in (f"origin/{base_ref}", f"upstream/{base_ref}"):
-        mb = subprocess.run(
-            ["git", "merge-base", remote_base, "HEAD"],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        if mb.returncode != 0:
-            continue
-        merge_base = mb.stdout.strip()
-        diff = subprocess.run(
-            ["git", "diff", f"{merge_base}..HEAD"],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        if diff.returncode == 0 and diff.stdout.strip():
-            description = f"PR {pr_url} ({head_ref} → {base_ref})"
-            return diff.stdout, description
+    diff = subprocess.run(
+        ["gh", "pr", "diff", pr_number],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if diff.returncode == 0 and diff.stdout.strip():
+        return diff.stdout, f"PR {pr_url} ({head_ref})"
 
     return None, None
 
