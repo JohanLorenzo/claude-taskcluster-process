@@ -30,3 +30,8 @@ ignore = [
   "S101",   # assert — standard in tests
   "S108",   # /tmp in tests is a mock value, not a real temp file
 ]
+"skills/**" = [
+  "T201",   # print — expected in CLI scripts
+  "S603",   # subprocess call — required for CLI tool invocation
+  "S607",   # partial executable path — system tools expected on PATH
+]
