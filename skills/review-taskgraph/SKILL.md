@@ -20,10 +20,14 @@ Use this skill when the user invokes `/review-taskgraph` with one of:
 
 ## Process
 
-1. Get the diff:
-   ```bash
-   python3 ~/.claude/skills/review-taskgraph/scripts/get_diff.py $ARGUMENTS
-   ```
+Note: if the user provided an argument, it is appended at the end of this skill
+as `ARGUMENTS: <value>`. Use that value in step 1.
+
+1. Get the diff. Check the `ARGUMENTS:` line at the bottom of this document.
+   - If `ARGUMENTS` is non-empty, run:
+     `python3 ~/.claude/skills/review-taskgraph/scripts/get_diff.py <ARGUMENTS_VALUE>`
+   - If `ARGUMENTS` is absent or empty, run:
+     `python3 ~/.claude/skills/review-taskgraph/scripts/get_diff.py`
 
 2. From the diff, identify taskgraph-relevant files:
    - Python files under `transforms/` directories
