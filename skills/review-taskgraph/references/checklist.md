@@ -67,8 +67,7 @@
 - **Use `.setdefault()` for partial dict mutation**: if a transform must set one
   computed field inside a nested dict, navigate to the container and set the key —
   do not replace the whole parent dict (`task["run"] = {...}` clobbers every
-  YAML-provided sibling). Use `task["run"].setdefault("key", value)` or
-  `task.setdefault("run", {})["key"] = value` instead.
+  YAML-provided sibling). Use `task["run"].setdefault("key", value)` instead.
 
 - **Parameter-derived values belong in YAML**: transforms must not construct field
   values via f-strings or string formatting of runtime parameters. Static templates
