@@ -3,7 +3,6 @@ name: review-taskgraph
 description: Review taskgraph-related patches (transforms, kind YAML, worker config) for correctness, best practices, and reuse of existing upstream utilities
 allowed-tools: Bash, Read, Grep, Glob
 argument-hint: "[PR-URL | D<revision> | commit-range]"
-context: fork
 ---
 
 # Review Taskgraph
@@ -21,10 +20,10 @@ Use this skill when the user invokes `/review-taskgraph` with one of:
 
 ## Process
 
-1. Get the diff:
-   ```bash
-   python3 ~/.claude/skills/review-taskgraph/scripts/get_diff.py $ARGUMENTS
-   ```
+1. Get the diff. The user's argument: **$ARGUMENTS** (empty if none given)
+
+   Run `python3 ~/.claude/skills/review-taskgraph/scripts/get_diff.py` passing the
+   argument above as the first parameter (omit entirely if empty).
 
 2. From the diff, identify taskgraph-relevant files:
    - Python files under `transforms/` directories
