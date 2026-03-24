@@ -49,6 +49,12 @@
 
 ## Transform design
 
+- **Commands belong in YAML**: transforms must not construct `run.command` strings
+  via f-strings or string formatting. Command templates belong in the kind YAML;
+  use `task_context` with `from-parameters` to substitute runtime values
+  (`channel`, `head_rev`, etc.) at graph-generation time. This applies equally to
+  other parameter-derived fields (`scopes`, `worker.env.*`).
+
 - **No per-task conditional logic**: transforms must not branch on task identity or
   attributes (`task["name"]`, `task["label"]`, `if platform == "linux"`, etc.) to
   produce different per-task values. Varying configuration belongs in the kind YAML
