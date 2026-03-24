@@ -36,12 +36,14 @@
   `attributes:` with hyphens silently breaks standard filtering and requires a custom
   target task function to compensate.
 
-- **`task-defaults`**: shared configuration across tasks in a kind belongs in
-  `task-defaults:`, not duplicated in each task entry. Use `{name}` as a
-  substitution placeholder (automatically provided by `task_context`) to handle
-  fields that follow a uniform pattern across tasks (e.g. `description`,
-  artifact `name`/`path`). A task entry should contain only the fields that are
-  genuinely unique to it.
+- **`task-defaults` + `task_context` as the default approach**: shared
+  configuration belongs in `task-defaults:`, not repeated in each task entry. For
+  any field whose value varies by parameter or by task name, use `task_context`
+  with `from-parameters` and `substitution-fields` — declared once in
+  `task-defaults.task-context` so it applies to all tasks automatically.
+  `{name}` (the task's own name) is always available without listing it in
+  `from-parameters`. A task entry should contain only what is genuinely unique
+  to that task; everything else is a `task-defaults` + `task_context` candidate.
 - **`kind-dependencies`**: must list every kind whose tasks are accessed via
   `config.kind_dependencies_tasks` or the `from_deps` transform. Missing entries
   cause empty dependency lookups.
