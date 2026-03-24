@@ -70,7 +70,6 @@ def load_permissions_config(repo_paths=None, taskgraph_repo=None):
     git_ops = config.get("git_c_operations", [])
     for path in repo_paths or []:
         rules.extend(f"Bash(git -C {path} {op}:*)" for op in git_ops)
-        rules.append(f"Bash(git -C {path}/.claude/worktrees/:*)")
     if taskgraph_repo:
         for extra in config.get("uv_taskgraph_extras", []):
             suffix = f"[{extra}]" if extra else ""

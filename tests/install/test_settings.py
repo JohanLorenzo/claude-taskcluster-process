@@ -182,15 +182,6 @@ def test_load_permissions_config_no_git_c_without_repos(tmp_path):
     assert not any("git -C" in r for r in result)
 
 
-def test_load_permissions_config_generates_worktree_wildcard(tmp_path):
-    cfg = tmp_path / "permissions-config.json"
-    cfg.write_text("{}")
-    with patch.object(settings, "PERMISSIONS_CONFIG_FILE", cfg):
-        result = settings.load_permissions_config(repo_paths=["/a/repo", "/b/repo"])
-    assert "Bash(git -C /a/repo/.claude/worktrees/:*)" in result
-    assert "Bash(git -C /b/repo/.claude/worktrees/:*)" in result
-
-
 def test_load_permissions_config_missing_returns_empty(tmp_path):
     with patch.object(settings, "PERMISSIONS_CONFIG_FILE", tmp_path / "missing.json"):
         assert settings.load_permissions_config() == []
