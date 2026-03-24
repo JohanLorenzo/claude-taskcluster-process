@@ -29,6 +29,13 @@
   include `taskgraph.transforms.run:transforms` or
   `taskgraph.transforms.task:transforms` in the `transforms:` list — the default
   loader appends them automatically. Duplicating them causes errors.
+- **`run-on-tasks-for` / `run-on-git-branches` at top level**: these must be
+  top-level task fields, not nested under `attributes:`. At the top level,
+  `task.py` converts them to `run_on_tasks_for` / `run_on_git_branches` (underscores)
+  in attributes, which the built-in `default` target task reads. Nesting them under
+  `attributes:` with hyphens silently breaks standard filtering and requires a custom
+  target task function to compensate.
+
 - **`task-defaults`**: shared configuration across tasks in a kind belongs in
   `task-defaults:`, not duplicated in each task entry.
 - **`kind-dependencies`**: must list every kind whose tasks are accessed via
