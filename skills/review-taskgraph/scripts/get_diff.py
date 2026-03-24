@@ -6,13 +6,25 @@ import subprocess
 import sys
 
 
-def _detect_pr_range():
+def _git_cwd():
+    """Return the git toplevel directory, or None if not in a git repo."""
+    result = subprocess.run(
+        ["git", "rev-parse", "--show-toplevel"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return result.stdout.strip() if result.returncode == 0 else None
+
+
+def _detect_pr_range(cwd=None):
     """Try to detect and return the diff for an open PR on the current branch."""
     pr = subprocess.run(
         ["gh", "pr", "view", "--json", "number,url,headRefName"],
         capture_output=True,
         text=True,
         check=False,
+        cwd=cwd,
     )
     if pr.returncode != 0:
         return None, None
@@ -29,6 +41,7 @@ def _detect_pr_range():
         capture_output=True,
         text=True,
         check=False,
+        cwd=cwd,
     )
     if diff.returncode == 0 and diff.stdout.strip():
         return diff.stdout, f"PR {pr_url} ({head_ref})"
@@ -36,7 +49,7 @@ def _detect_pr_range():
     return None, None
 
 
-def _detect_base_range():
+def _detect_base_range(cwd=None):
     """Fall back to diff of commits ahead of a known base branch."""
     for base in ("origin/master", "origin/main", "upstream/master", "upstream/main"):
         check = subprocess.run(
@@ -44,6 +57,7 @@ def _detect_base_range():
             capture_output=True,
             text=True,
             check=False,
+            cwd=cwd,
         )
         if check.returncode != 0:
             continue
@@ -52,6 +66,7 @@ def _detect_base_range():
             capture_output=True,
             text=True,
             check=False,
+            cwd=cwd,
         )
         if diff.returncode == 0 and diff.stdout.strip():
             return diff.stdout, f"commits ahead of {base}"
@@ -59,11 +74,11 @@ def _detect_base_range():
     return None, None
 
 
-def _detect_commit_range():
-    diff, description = _detect_pr_range()
+def _detect_commit_range(cwd=None):
+    diff, description = _detect_pr_range(cwd=cwd)
     if diff:
         return diff, description
-    return _detect_base_range()
+    return _detect_base_range(cwd=cwd)
 
 
 def get_diff(arg=None):
@@ -96,30 +111,34 @@ def get_diff(arg=None):
             text=True,
             check=False,
         )
-    elif arg and ".." in arg:
-        result = subprocess.run(
-            ["git", "diff", arg],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
     else:
-        result = subprocess.run(
-            ["git", "diff", "HEAD"],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        if result.returncode == 0 and not result.stdout.strip():
-            diff, description = _detect_commit_range()
-            if diff:
-                print(
-                    f"No uncommitted changes. Reviewing {description}.",
-                    file=sys.stderr,
-                )
-                return diff
-            print("Diff is empty — nothing to review.", file=sys.stderr)
-            sys.exit(1)
+        cwd = _git_cwd()
+        if arg and ".." in arg:
+            result = subprocess.run(
+                ["git", "diff", arg],
+                capture_output=True,
+                text=True,
+                check=False,
+                cwd=cwd,
+            )
+        else:
+            result = subprocess.run(
+                ["git", "diff", "HEAD"],
+                capture_output=True,
+                text=True,
+                check=False,
+                cwd=cwd,
+            )
+            if result.returncode == 0 and not result.stdout.strip():
+                diff, description = _detect_commit_range(cwd=cwd)
+                if diff:
+                    print(
+                        f"No uncommitted changes. Reviewing {description}.",
+                        file=sys.stderr,
+                    )
+                    return diff
+                print("Diff is empty — nothing to review.", file=sys.stderr)
+                sys.exit(1)
 
     if result.returncode != 0:
         print(result.stderr or "Command failed", file=sys.stderr)

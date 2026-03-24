@@ -13,6 +13,7 @@ spec.loader.exec_module(_mod)
 get_diff = _mod.get_diff
 _detect_pr_range = _mod._detect_pr_range  # noqa: SLF001
 _detect_base_range = _mod._detect_base_range  # noqa: SLF001
+_git_cwd = _mod._git_cwd  # noqa: SLF001
 
 
 def test_github_pr_url(tmp_path):
@@ -58,30 +59,22 @@ def test_phabricator_full_url():
 
 
 def test_commit_range():
-    with patch(
-        "subprocess.run", return_value=make_run(0, stdout="range diff\n")
-    ) as mock_run:
+    calls = [
+        make_run(0, stdout="/repo\n"),  # _git_cwd
+        make_run(0, stdout="range diff\n"),  # git diff main..HEAD
+    ]
+    with patch("subprocess.run", side_effect=calls):
         result = get_diff("main..HEAD")
-    mock_run.assert_called_once_with(
-        ["git", "diff", "main..HEAD"],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
     assert result == "range diff\n"
 
 
 def test_no_args_uncommitted():
-    with patch(
-        "subprocess.run", return_value=make_run(0, stdout="local diff\n")
-    ) as mock_run:
+    calls = [
+        make_run(0, stdout="/repo\n"),  # _git_cwd
+        make_run(0, stdout="local diff\n"),  # git diff HEAD
+    ]
+    with patch("subprocess.run", side_effect=calls):
         result = get_diff(None)
-    mock_run.assert_called_once_with(
-        ["git", "diff", "HEAD"],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
     assert result == "local diff\n"
 
 
@@ -100,6 +93,44 @@ def test_detect_pr_range_returns_diff_and_description():
     assert diff == diff_content
     assert "https://github.com/org/repo/pull/1" in description
     assert "my-branch" in description
+
+
+def test_git_cwd_returns_toplevel():
+    with patch("subprocess.run", return_value=make_run(0, stdout="/repo/root\n")):
+        assert _git_cwd() == "/repo/root"
+
+
+def test_git_cwd_returns_none_when_not_in_git_repo():
+    with patch("subprocess.run", return_value=make_run(1, stderr="not a git repo")):
+        assert _git_cwd() is None
+
+
+def test_detect_pr_range_passes_cwd_to_subprocess():
+    pr_json = (
+        '{"number": 1, "url": "https://github.com/org/repo/pull/1",'
+        ' "headRefName": "my-branch"}'
+    )
+    diff_content = "diff --git a/foo.py\n+change\n"
+    calls = [
+        make_run(0, stdout=pr_json),
+        make_run(0, stdout=diff_content),
+    ]
+    with patch("subprocess.run", side_effect=calls) as mock_run:
+        _detect_pr_range(cwd="/some/repo")
+    for call in mock_run.call_args_list:
+        assert call.kwargs.get("cwd") == "/some/repo"
+
+
+def test_detect_base_range_passes_cwd_to_subprocess():
+    diff_content = "diff --git a/foo.py\n+change\n"
+    calls = [
+        make_run(0),
+        make_run(0, stdout=diff_content),
+    ]
+    with patch("subprocess.run", side_effect=calls) as mock_run:
+        _detect_base_range(cwd="/some/repo")
+    for call in mock_run.call_args_list:
+        assert call.kwargs.get("cwd") == "/some/repo"
 
 
 def test_detect_pr_range_returns_none_when_no_pr():
@@ -149,6 +180,7 @@ def test_no_args_detects_pr_when_no_uncommitted_changes(capsys):
     )
     diff_content = "diff --git a/foo.py\n+change\n"
     calls = [
+        make_run(0, stdout="/repo\n"),  # _git_cwd
         make_run(0, stdout=""),  # git diff HEAD — empty
         make_run(0, stdout=pr_json),  # gh pr view
         make_run(0, stdout=diff_content),  # gh pr diff 1
@@ -163,6 +195,7 @@ def test_no_args_detects_pr_when_no_uncommitted_changes(capsys):
 def test_no_args_falls_back_to_origin_master_when_no_pr(capsys):
     diff_content = "diff --git a/bar.py\n+change\n"
     calls = [
+        make_run(0, stdout="/repo\n"),  # _git_cwd
         make_run(0, stdout=""),  # git diff HEAD — empty
         make_run(1),  # gh pr view — no PR
         make_run(0),  # git rev-parse origin/master — exists
