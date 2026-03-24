@@ -4,10 +4,8 @@
 
 **`resolve_keyed_by`** — `taskgraph.util.schema:resolve_keyed_by`
 
-Replaces: manual `if platform == "linux"` / `elif` chains that branch on task
-attributes.
-
-Use `by-<attribute>:` in YAML instead:
+Replaces: per-task conditional logic in transforms (see checklist). Use
+`by-<attribute>:` in YAML instead:
 ```yaml
 worker-type:
   by-platform:
