@@ -37,7 +37,11 @@
   target task function to compensate.
 
 - **`task-defaults`**: shared configuration across tasks in a kind belongs in
-  `task-defaults:`, not duplicated in each task entry.
+  `task-defaults:`, not duplicated in each task entry. Use `{name}` as a
+  substitution placeholder (automatically provided by `task_context`) to handle
+  fields that follow a uniform pattern across tasks (e.g. `description`,
+  artifact `name`/`path`). A task entry should contain only the fields that are
+  genuinely unique to it.
 - **`kind-dependencies`**: must list every kind whose tasks are accessed via
   `config.kind_dependencies_tasks` or the `from_deps` transform. Missing entries
   cause empty dependency lookups.
