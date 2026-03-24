@@ -70,6 +70,12 @@
 
 ## Transform design
 
+- **Name transforms precisely, keep them unitary**: function names like
+  `add_build_config` or `add_task_config` are too vague. Use names that state
+  exactly what the function does (`add_index_routes`, `set_taskcluster_secret`).
+  Each `@transforms.add` function should do one thing; split functions that do
+  multiple unrelated things into separate transforms.
+
 - **Use `.setdefault()` for partial dict mutation**: if a transform must set one
   computed field inside a nested dict, navigate to the container and set the key —
   do not replace the whole parent dict (`task["run"] = {...}` clobbers every
