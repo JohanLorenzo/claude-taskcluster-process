@@ -13,6 +13,14 @@
   fields (e.g., fields consumed by later transforms). If all fields are consumed by
   this transform, use the default (`True`).
 
+## `.taskcluster.yml` correctness
+
+- **Pin decision image by digest**: the `image:` field must include both the version
+  tag and the manifest digest, e.g.
+  `mozillareleases/taskgraph:decision-v20.0.0@sha256:<digest>`. A tag alone is
+  mutable and can silently point to a different image after a push. Retrieve the
+  digest with `docker buildx imagetools inspect <image>:<tag>`.
+
 ## Kind YAML correctness
 
 - **kebab-case identifiers**: all YAML keys under `tasks:` must match
