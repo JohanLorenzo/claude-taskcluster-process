@@ -47,6 +47,15 @@
 - **Cache name prefix**: cache names must start with
   `{trust_domain}-level-{level}-` to ensure isolation between projects and levels.
 
+## Transform design
+
+- **No `task_name` branching**: transforms must not branch on `task["name"]` (or
+  `task_name`) to produce different behaviour per task. Task-specific configuration
+  belongs in the kind YAML (as fields on each task entry, or via `task-defaults`);
+  the transform reads those fields rather than switching on the name. Branching on
+  name couples the transform to every task that uses it and forces a code change
+  whenever a new task is added.
+
 ## General quality
 
 - **Deep copy for splits**: when a transform yields multiple tasks from one input,
