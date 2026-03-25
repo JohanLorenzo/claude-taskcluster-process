@@ -12,7 +12,7 @@ uv run --with-editable "<taskgraph_repo>" taskgraph
 - On failures: stop immediately and report findings to the user. Do not retry with the
   same broken approach.
 - Speed: for each commit, prefer local validation → local testing → direct submission
-  → push to PR. Repeat steps 4–8 for every commit.
+  → push to PR. Repeat steps 3–8 for every commit.
 - One commit per changed taskgraph kind — start upstream dependencies, work toward
   leaf kinds.
 - Reuse transforms from taskgraph and mozilla-taskgraph. Do not reimplement locally
@@ -67,11 +67,11 @@ uv run --with-editable "<taskgraph_repo>" taskgraph init
 `{trust-domain}-{1,3}/linux-gw-gcp` are present in `worker-pools.yml` in fxci-config.
 If any are missing, add them to the fxci-config PR before proceeding.
 
-### Step 4: Validate locally
+### Step 3: Validate locally
 
-Repeat steps 4–8 for each commit.
+Repeat steps 3–8 for each commit.
 
-Gate: must pass before proceeding to step 5.
+Gate: must pass before proceeding to step 4.
 
 ```bash
 uv run --with-editable "<taskgraph_repo>" taskgraph target-graph \
@@ -79,7 +79,7 @@ uv run --with-editable "<taskgraph_repo>" taskgraph target-graph \
 ```
 On the Firefox repo: `./mach taskgraph target-graph -p <params>`
 
-### Step 4.5: Self-review
+### Step 4: Self-review
 
 Gate: must be PASS or PASS-WITH-NOTES before proceeding to step 5.
 
@@ -87,7 +87,7 @@ Gate: must be PASS or PASS-WITH-NOTES before proceeding to step 5.
 /review-taskgraph <base>..<HEAD>
 ```
 
-If NEEDS-CHANGES: fix all ERRORs and WARNINGs, re-run Step 4, then repeat.
+If NEEDS-CHANGES: fix all ERRORs and WARNINGs, re-run Step 3, then repeat.
 
 ### Step 5: Test
 
