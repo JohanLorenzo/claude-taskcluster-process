@@ -294,26 +294,30 @@ def test_main_exits_without_prompt_when_no_changes(tmp_path, caplog):
         local_config.render_local_config(tg, mtg, fxci, tc, repos)
     )
     repo_paths = [str(tmp_path), str(tg), str(mtg), str(fxci), str(tc)]
-    worktree_rules = sorted(
-        f"Bash(git -C {p}/.claude/worktrees/:*)" for p in repo_paths
-    )
-    settings_file = _make_settings(
-        tmp_path,
-        extra={
-            "hooks": {"PreToolUse": [], "PostToolUse": []},
-            "permissions": {
-                "allow": worktree_rules,
-                "defaultMode": "plan",
-                "additionalDirectories": repo_paths,
-            },
-        },
-    )
     rules_src = tmp_path / "rules"
     rules_src.mkdir()
     rules_target = tmp_path / "claude_rules"
     rules_target.mkdir()
     skills_target = tmp_path / "claude_skills"
     skills_target.mkdir()
+    worktree_rules = sorted(
+        f"Bash(git -C {p}/.claude/worktrees/:*)" for p in repo_paths
+    )
+    monitor_rule = (
+        f"Bash(uv run {skills_target}/taskcluster-monitor-group"
+        f"/scripts/taskcluster_monitor_group.py:*)"
+    )
+    settings_file = _make_settings(
+        tmp_path,
+        extra={
+            "hooks": {"PreToolUse": [], "PostToolUse": []},
+            "permissions": {
+                "allow": sorted([*worktree_rules, monitor_rule]),
+                "defaultMode": "plan",
+                "additionalDirectories": repo_paths,
+            },
+        },
+    )
 
     empty_perms = tmp_path / "permissions-config.json"
     empty_perms.write_text("{}")
@@ -323,6 +327,7 @@ def test_main_exits_without_prompt_when_no_changes(tmp_path, caplog):
         patch.object(settings, "HOOKS_CONFIG_FILE", hooks_cfg),
         patch.object(settings, "PERMISSIONS_CONFIG_FILE", empty_perms),
         patch.object(settings, "REPO_ROOT", tmp_path),
+        patch.object(settings, "SKILLS_DIR", skills_target),
         patch.object(local_config, "LOCAL_CONFIG_FILE", local_config_file),
         patch.object(symlinks, "REPO_ROOT", tmp_path),
         patch.object(symlinks, "RULES_DIR", rules_target),

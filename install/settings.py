@@ -8,6 +8,7 @@ from .constants import (
     PERMISSIONS_CONFIG_FILE,
     REPO_ROOT,
     SETTINGS_FILE,
+    SKILLS_DIR,
 )
 from .utils import unified_diff
 
@@ -67,6 +68,10 @@ def load_permissions_config(repo_paths=None, taskgraph_repo=None):
             f"Bash(until TASKCLUSTER_ROOT_URL={url} {cmd}:*)"
             for cmd in _TC_POLL_COMMANDS
         )
+    skill_script = (
+        f"{SKILLS_DIR}/taskcluster-monitor-group/scripts/taskcluster_monitor_group.py"
+    )
+    rules.append(f"Bash(uv run {skill_script}:*)")
     git_ops = config.get("git_c_operations", [])
     for path in repo_paths or []:
         rules.extend(f"Bash(git -C {path} {op}:*)" for op in git_ops)

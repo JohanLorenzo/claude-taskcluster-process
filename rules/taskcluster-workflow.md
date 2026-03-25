@@ -243,18 +243,11 @@ DECISION_TASK_ID=$(gh api "repos/<org/repo>/commits/$HEAD_SHA/check-runs" \
   --jq '[.check_runs[] | select(.name | contains("Decision Task"))][0].external_id')
 ```
 
-**Monitoring protocol** (follow this order strictly):
-1. Poll the decision task first:
-   ```bash
-   until TASKCLUSTER_ROOT_URL=<url> taskcluster task status $DECISION_TASK_ID | grep -qvE 'pending|running'; do sleep 15; done
-   ```
-   On failure: `TASKCLUSTER_ROOT_URL=<url> taskcluster task log $DECISION_TASK_ID`
-2. Poll each dependency task before polling the target task.
-3. ALWAYS read the target task's logs (`taskcluster task log $TASK_ID`), even if green.
-4. If the task produces artifacts, check those too.
-5. Only after the target task succeeds, use `taskcluster group status $DECISION_TASK_ID`
-   to validate the full graph.
-6. If a task fails, use `taskcluster group list $DECISION_TASK_ID` to find what went wrong.
+**Monitoring protocol**: use the skill (single approval, blocks until done):
+```
+/taskcluster-monitor-group <TC_ROOT_URL> <DECISION_TASK_ID>
+```
+The skill polls the decision task, then the full group, and prints logs for any failures.
 
 Other useful commands:
 ```bash

@@ -160,7 +160,23 @@ def test_load_permissions_config_no_uv_rules_without_taskgraph_repo(tmp_path):
     cfg.write_text('{"uv_taskgraph_extras": ["", "load-image"]}')
     with patch.object(settings, "PERMISSIONS_CONFIG_FILE", cfg):
         result = settings.load_permissions_config()
-    assert not any("uv run" in r for r in result)
+    assert not any("uv run --with-editable" in r for r in result)
+
+
+def test_load_permissions_config_generates_monitor_group_rule(tmp_path):
+    cfg = tmp_path / "permissions-config.json"
+    cfg.write_text("{}")
+    fake_skills_dir = tmp_path / "skills"
+    with (
+        patch.object(settings, "PERMISSIONS_CONFIG_FILE", cfg),
+        patch.object(settings, "SKILLS_DIR", fake_skills_dir),
+    ):
+        result = settings.load_permissions_config()
+    expected = (
+        f"Bash(uv run {fake_skills_dir}/taskcluster-monitor-group"
+        f"/scripts/taskcluster_monitor_group.py:*)"
+    )
+    assert expected in result
 
 
 def test_load_permissions_config_generates_git_c_rules(tmp_path):
