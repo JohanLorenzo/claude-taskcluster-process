@@ -9,6 +9,9 @@ import asyncio
 import datetime
 import json
 import logging
+import os
+import re
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -18,6 +21,8 @@ import taskcluster.utils
 
 logging.basicConfig(format="%(message)s", stream=sys.stdout, level=logging.INFO)
 log = logging.getLogger(__name__)
+
+_CREDS_PATTERN = re.compile(r"^export (\w+)='([^']*)'$", re.MULTILINE)
 
 
 def _now():
@@ -49,6 +54,33 @@ def _update_timestamps(task):
             art["expires"] = (now + datetime.timedelta(days=7)).isoformat()
 
 
+def _signin(tc_url, scopes):
+    """Sign in to Taskcluster with exactly the given scopes, return credentials dict."""
+    name = f"claude-submit-{taskcluster.utils.slugId()[:7]}"
+    scope_args = [arg for scope in scopes for arg in ("--scope", scope)]
+    env = {**os.environ, "TASKCLUSTER_ROOT_URL": tc_url}
+
+    log.info("Opening browser for Taskcluster sign-in (%s) ...", name)
+    result = subprocess.run(
+        ["taskcluster", "signin", "-n", name, "--expires", "5m", *scope_args],
+        env=env,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+
+    creds = dict(_CREDS_PATTERN.findall(result.stdout))
+    return {
+        "clientId": creds["TASKCLUSTER_CLIENT_ID"],
+        "accessToken": creds["TASKCLUSTER_ACCESS_TOKEN"],
+        **(
+            {"certificate": creds["TASKCLUSTER_CERTIFICATE"]}
+            if "TASKCLUSTER_CERTIFICATE" in creds
+            else {}
+        ),
+    }
+
+
 async def cmd_prepare(tc_url, task_id):
     async with tc_aio.createSession() as session:
         queue = tc_aio.Queue({"rootUrl": tc_url}, session=session)
@@ -68,15 +100,9 @@ async def cmd_prepare(tc_url, task_id):
         json.dump(task, tmp, indent=2)
         path = tmp.name
 
-    scopes = _extract_scopes(task)
-
     log.info("\nTask written to: %s", path)
-    log.info("\nRequired scopes for submission:")
-    for scope in scopes:
-        log.info("  --scope '%s'", scope)
     log.info(
-        "\nSign in, edit the file if needed (Step 5b), then run:\n"
-        "  uv run %s submit %s %s",
+        "\nEdit the file if needed (Step 5b), then run:\n  uv run %s submit %s %s",
         __file__,
         tc_url,
         path,
@@ -86,12 +112,15 @@ async def cmd_prepare(tc_url, task_id):
 
 async def cmd_submit(tc_url, task_file):
     task = json.loads(await asyncio.to_thread(Path(task_file).read_text))
+    scopes = _extract_scopes(task)
+
+    creds = await asyncio.to_thread(_signin, tc_url, scopes)
 
     task_id = taskcluster.utils.slugId()
     log.info("Submitting task %s ...", task_id)
 
     async with tc_aio.createSession() as session:
-        queue = tc_aio.Queue({"rootUrl": tc_url}, session=session)
+        queue = tc_aio.Queue({"rootUrl": tc_url, "credentials": creds}, session=session)
         result = await queue.createTask(task_id, task)
 
     url = f"{tc_url}/tasks/{task_id}"
@@ -105,7 +134,7 @@ def main():
     sub = parser.add_subparsers(dest="command", required=True)
 
     prep = sub.add_parser(
-        "prepare", help="Fetch/read task, update timestamps, print scopes"
+        "prepare", help="Fetch/read task, update timestamps, write to temp file"
     )
     prep.add_argument("tc_url", metavar="TC_ROOT_URL")
     src = prep.add_mutually_exclusive_group(required=True)
@@ -114,7 +143,9 @@ def main():
         "-", dest="read_stdin", action="store_true", help="Read task JSON from stdin"
     )
 
-    sub_submit = sub.add_parser("submit", help="Sign in and submit the prepared task")
+    sub_submit = sub.add_parser(
+        "submit", help="Sign in with exact scopes and submit the prepared task"
+    )
     sub_submit.add_argument("tc_url", metavar="TC_ROOT_URL")
     sub_submit.add_argument("task_file", metavar="TASK_FILE")
 

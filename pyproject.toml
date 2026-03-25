@@ -36,3 +36,7 @@ ignore = [
   "S603",   # subprocess call — required for CLI tool invocation
   "S607",   # partial executable path — system tools expected on PATH
 ]
+"scripts/**" = [
+  "S603",   # subprocess call — required for CLI tool invocation
+  "S607",   # partial executable path — system tools expected on PATH
+]

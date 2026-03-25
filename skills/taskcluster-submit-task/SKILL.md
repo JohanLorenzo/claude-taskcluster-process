@@ -36,34 +36,19 @@ uv run --with-editable '<taskgraph_repo>' taskgraph target-graph \
     prepare <TC_ROOT_URL> -
 ```
 
-The script prints the temp file path and the required scopes.
+The script prints the temp file path.
 
 ### Step 2 — Edit the task file (Step 5b)
 
 Read the temp file. Resolve any `{"task-reference": "<name>"}` values to actual
 task IDs, adjust the payload, fix level (use level-1 for forks). Edit in place.
 
-### Step 3 — Sign in with the required scopes
-
-Using the scopes printed in Step 1:
-```bash
-TASKCLUSTER_ROOT_URL=<TC_ROOT_URL> taskcluster signin \
-  -n 'mozilla-auth0/ad|Mozilla-LDAP|jlorenzo/claude-code-client-<RANDOM>' \
-  --expires 1h \
-  --scope '<scope-1>' \
-  --scope '<scope-2>' \
-  ... \
-  > /tmp/tc-creds.sh
-```
-```bash
-source /tmp/tc-creds.sh
-```
-
-### Step 4 — Submit
+### Step 3 — Submit
 
 ```bash
 uv run ~/.claude/skills/taskcluster-submit-task/scripts/taskcluster_submit_task.py \
   submit <TC_ROOT_URL> <TASK_FILE>
 ```
 
-Report the task URL to the user.
+The script signs in automatically with exactly the scopes needed (opens browser
+for 5-minute credentials), then creates the task. Report the task URL to the user.
