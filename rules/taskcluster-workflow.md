@@ -67,21 +67,6 @@ uv run --with-editable "<taskgraph_repo>" taskgraph init
 `{trust-domain}-{1,3}/linux-gw-gcp` are present in `worker-pools.yml` in fxci-config.
 If any are missing, add them to the fxci-config PR before proceeding.
 
-### Step 3: Sign in
-
-Replace `<RANDOM>` with a 7-letter random hash (e.g., `xk4mfqz`). Always split into
-two separate commands (one approval each):
-
-```bash
-TASKCLUSTER_ROOT_URL=<url-from-step-1> taskcluster signin \
-  -n 'mozilla-auth0/ad|Mozilla-LDAP|jlorenzo/claude-code-client-<RANDOM>' \
-  --scope 'queue:get-artifact:public/*' --expires 1d \
-  > /tmp/tc-creds.sh
-```
-```bash
-source /tmp/tc-creds.sh
-```
-
 ### Step 4: Validate locally
 
 Repeat steps 4–8 for each commit.
@@ -98,36 +83,9 @@ On the Firefox repo: `./mach taskgraph target-graph -p <params>`
 
 Gate: must pass before proceeding to step 6.
 
-Decision tree:
-
-- Task runs in a Docker container → test locally with `load-task` (see recipe below).
+- Docker task → `/taskcluster-local-test <TC_ROOT_URL> <task-label> --params <file>`
 - Scriptworker task → spawn a local worker against the staging environment.
-- `load-task` fails or neither applies → use `/taskcluster-submit-task` skill.
-
-**`load-task` recipe for locally generated tasks**:
-
-1. Create a local params file with the real fork URL and current HEAD rev.
-
-2. Generate the task definition:
-   ```bash
-   uv run --with-editable "<taskgraph_repo>" taskgraph target-graph \
-     --root taskcluster -p /tmp/local-params.yml --json 2>/dev/null \
-     | python3 -c "import sys,json; g=json.load(sys.stdin); print(json.dumps(g['<task-label>']['task']))" \
-     > /tmp/task.json
-   ```
-
-3. Run the task locally:
-   ```bash
-   source /tmp/tc-staging-creds.sh
-   DOCKER_DEFAULT_PLATFORM=linux/amd64 TASKCLUSTER_ROOT_URL=<staging-url> \
-     uv run --with-editable "<taskgraph_repo>[load-image]" taskgraph load-task \
-     --root taskcluster --image task-id=<docker-image-task-id> - < /tmp/task.json
-   ```
-
-   **Note**: Compiled binaries (ruff, etc.) may segfault under qemu on Apple Silicon.
-   For pre-commit/ruff checks, run `pre-commit run -a` natively instead of inside `load-task`.
-
-**Direct task submission**: use the `/taskcluster-submit-task` skill.
+- Needs TC proxy / secrets → `/taskcluster-submit-task <TC_ROOT_URL> --task-id <ID>`
 
 ### Step 6: Push to PR
 

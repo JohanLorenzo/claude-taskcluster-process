@@ -175,6 +175,7 @@ def test_load_permissions_config_generates_skill_script_rules(tmp_path):
     for skill, script in [
         ("taskcluster-monitor-group", "taskcluster_monitor_group.py"),
         ("taskcluster-submit-task", "taskcluster_submit_task.py"),
+        ("taskcluster-local-test", "taskcluster_local_test.py"),
     ]:
         expected = f"Bash(uv run {fake_skills_dir}/{skill}/scripts/{script}:*)"
         assert expected in result

@@ -308,6 +308,8 @@ def test_main_exits_without_prompt_when_no_changes(tmp_path, caplog):
         f"/scripts/taskcluster_monitor_group.py:*)",
         f"Bash(uv run {skills_target}/taskcluster-submit-task"
         f"/scripts/taskcluster_submit_task.py:*)",
+        f"Bash(uv run {skills_target}/taskcluster-local-test"
+        f"/scripts/taskcluster_local_test.py:*)",
     ]
     settings_file = _make_settings(
         tmp_path,

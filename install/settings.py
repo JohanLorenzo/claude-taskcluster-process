@@ -71,6 +71,7 @@ def load_permissions_config(repo_paths=None, taskgraph_repo=None):
     for skill_name, script_name in [
         ("taskcluster-monitor-group", "taskcluster_monitor_group.py"),
         ("taskcluster-submit-task", "taskcluster_submit_task.py"),
+        ("taskcluster-local-test", "taskcluster_local_test.py"),
     ]:
         rules.append(f"Bash(uv run {SKILLS_DIR}/{skill_name}/scripts/{script_name}:*)")
     git_ops = config.get("git_c_operations", [])
