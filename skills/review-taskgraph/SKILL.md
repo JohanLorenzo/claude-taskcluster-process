@@ -80,6 +80,11 @@ Severity levels:
 - **WARNING**: works but violates conventions or misses a better approach
 - **SUGGESTION**: style improvement or optional optimization
 
+Verdict criteria:
+- **NEEDS-CHANGES**: any ERROR or WARNING present
+- **PASS-WITH-NOTES**: suggestions only, no errors or warnings
+- **PASS**: no findings at all
+
 Categories: `transform-correctness`, `kind-yaml`, `worker-scope`, `general-quality`,
 `reuse`
 
