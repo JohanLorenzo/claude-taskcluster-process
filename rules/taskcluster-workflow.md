@@ -79,6 +79,16 @@ uv run --with-editable "<taskgraph_repo>" taskgraph target-graph \
 ```
 On the Firefox repo: `./mach taskgraph target-graph -p <params>`
 
+### Step 4.5: Self-review
+
+Gate: must be PASS or PASS-WITH-NOTES before proceeding to step 5.
+
+```
+/review-taskgraph <base>..<HEAD>
+```
+
+If NEEDS-CHANGES: fix all ERRORs and WARNINGs, re-run Step 4, then repeat.
+
 ### Step 5: Test
 
 Gate: must pass before proceeding to step 6.
