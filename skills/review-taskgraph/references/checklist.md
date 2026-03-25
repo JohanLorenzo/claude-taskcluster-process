@@ -23,6 +23,10 @@
 
 ## Kind YAML correctness
 
+- **Blank lines for readability**: separate top-level sections (`loader`,
+  `transforms`, `kind-dependencies`, `task-defaults`, `tasks`) with a blank line,
+  and separate individual task entries under `tasks` with a blank line.
+
 - **kebab-case identifiers**: all YAML keys under `tasks:` must match
   `^[a-z$][a-z0-9-]*$`. No camelCase, no snake_case.
 - **Loader/transform chain**: when using `taskgraph.loader.default:loader`, do NOT
