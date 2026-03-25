@@ -163,7 +163,7 @@ def test_load_permissions_config_no_uv_rules_without_taskgraph_repo(tmp_path):
     assert not any("uv run --with-editable" in r for r in result)
 
 
-def test_load_permissions_config_generates_monitor_group_rule(tmp_path):
+def test_load_permissions_config_generates_skill_script_rules(tmp_path):
     cfg = tmp_path / "permissions-config.json"
     cfg.write_text("{}")
     fake_skills_dir = tmp_path / "skills"
@@ -172,11 +172,12 @@ def test_load_permissions_config_generates_monitor_group_rule(tmp_path):
         patch.object(settings, "SKILLS_DIR", fake_skills_dir),
     ):
         result = settings.load_permissions_config()
-    expected = (
-        f"Bash(uv run {fake_skills_dir}/taskcluster-monitor-group"
-        f"/scripts/taskcluster_monitor_group.py:*)"
-    )
-    assert expected in result
+    for skill, script in [
+        ("taskcluster-monitor-group", "taskcluster_monitor_group.py"),
+        ("taskcluster-submit-task", "taskcluster_submit_task.py"),
+    ]:
+        expected = f"Bash(uv run {fake_skills_dir}/{skill}/scripts/{script}:*)"
+        assert expected in result
 
 
 def test_load_permissions_config_generates_git_c_rules(tmp_path):

@@ -25,10 +25,6 @@ uv run --with-editable "<taskgraph_repo>" taskgraph
 - Shell state does not persist between Bash tool calls. Always inline env vars in the
   same command that uses them (e.g. `TASKCLUSTER_ROOT_URL=... taskcluster ...`) or
   `source` the creds file in the same command.
-- `watch` requires a TTY and will fail in the Bash tool. Use a polling loop instead:
-  ```bash
-  until TASKCLUSTER_ROOT_URL=<url> taskcluster task status $TASK_ID | grep -qvE 'pending|running'; do sleep 15; done
-  ```
 
 ## Taskcluster instances
 
@@ -65,10 +61,6 @@ If `.taskcluster.yml` doesn't exist:
 ```bash
 uv run --with-editable "<taskgraph_repo>" taskgraph init
 ```
-
-This generates `.taskcluster.yml`, `taskcluster/config.yml`, kind definitions, a
-sample Dockerfile, and a sample transform module. Review and commit the generated
-files before proceeding.
 
 **Verify worker pools exist** before writing `.taskcluster.yml`. Check that
 `{trust-domain}-{1,3}/decision`, `{trust-domain}-{1,3}/linux-gcp`, and
@@ -110,17 +102,11 @@ Decision tree:
 
 - Task runs in a Docker container → test locally with `load-task` (see recipe below).
 - Scriptworker task → spawn a local worker against the staging environment.
-- `load-task` fails or neither applies → direct task submission (steps 5a–5f below).
+- `load-task` fails or neither applies → use `/taskcluster-submit-task` skill.
 
 **`load-task` recipe for locally generated tasks**:
 
-1. Create a local params file with the real fork URL and current HEAD rev:
-   ```yaml
-   head_repository: https://github.com/<fork>/code-review
-   head_ref: <branch>
-   head_rev: <git rev-parse HEAD>
-   # ... other params
-   ```
+1. Create a local params file with the real fork URL and current HEAD rev.
 
 2. Generate the task definition:
    ```bash
@@ -130,7 +116,7 @@ Decision tree:
      > /tmp/task.json
    ```
 
-3. Run the task locally, using the staging task ID of the in-tree Docker image:
+3. Run the task locally:
    ```bash
    source /tmp/tc-staging-creds.sh
    DOCKER_DEFAULT_PLATFORM=linux/amd64 TASKCLUSTER_ROOT_URL=<staging-url> \
@@ -138,85 +124,16 @@ Decision tree:
      --root taskcluster --image task-id=<docker-image-task-id> - < /tmp/task.json
    ```
 
-   Mount the local checkout to skip the git clone (useful for fast iteration):
-   ```bash
-   --volume "<worktree-path>:/builds/worker/checkouts/vcs"
-   ```
-
    **Note**: Compiled binaries (ruff, etc.) may segfault under qemu on Apple Silicon.
    For pre-commit/ruff checks, run `pre-commit run -a` natively instead of inside `load-task`.
 
-**Direct task submission** (iterate without a full push cycle):
-
-Always split into separate commands:
-
-**Step 5a** — get the failed task definition:
-```bash
-taskcluster task def $FAILED_TASK_ID > /tmp/task.json
-```
-
-**Step 5b** — edit `/tmp/task.json` to fix the issue (payload, env, command, etc.)
-
-If the task was generated from `taskgraph target-graph --json` (not fetched from a live
-task), resolve any `{"task-reference": "<name>"}` values to actual task IDs, and add
-those tasks to `dependencies`. In-tree Docker images are a common case: replace
-`{"task-reference": "<docker-image>"}` with `{"taskId": "<actual-image-task-id>"}` and
-add the image task ID to `t["dependencies"]`.
-
-When submitting a task from a fork (staging or otherwise), always use level-1 workers,
-scopes, and secrets. Level 3 is production-only by design — forks run at level 1.
-
-**Step 5c** — update timestamps:
-```bash
-python3 -c "
-import json, datetime
-t = json.load(open('/tmp/task.json'))
-now = datetime.datetime.now(datetime.timezone.utc).isoformat()
-t['created'] = now
-t['deadline'] = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=1)).isoformat()
-t['expires'] = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=1)).isoformat()
-json.dump(t, open('/tmp/task.json', 'w'), indent=2)
-"
-```
-
-**Step 5d** — sign in with the task's required scopes (extract from `schedulerId`,
-`provisionerId`, `workerType`, `priority`, `routes`, and `scopes` fields):
-```bash
-TASKCLUSTER_ROOT_URL=<url-from-step-1> taskcluster signin \
-  -n 'mozilla-auth0/ad|Mozilla-LDAP|jlorenzo/claude-code-client-<RANDOM>' \
-  --expires 1h \
-  --scope 'queue:create-task:<priority>:<provisionerId>/<workerType>' \
-  --scope 'queue:scheduler-id:<schedulerId>' \
-  --scope 'queue:route:checks' \
-  --scope '<any scope listed in the task definition>' \
-  > /tmp/tc-creds.sh
-```
-
-Use the task's actual `priority` value (`low`, `very-low`, etc.), not `lowest`.
-When a scope error occurs, read only the **"missing the following scopes"** section
-of the error — not the full "requires" list. Add only what is listed as missing.
-```bash
-source /tmp/tc-creds.sh
-```
-
-**Step 5e** — generate a new task ID (separate command, save to variable):
-```bash
-TASK_ID=$(taskcluster slugid generate)
-```
-
-**Step 5f** — submit:
-```bash
-taskcluster api queue createTask $TASK_ID < /tmp/task.json
-```
-
-Once the task is green, port the fix back to the local code and commit.
+**Direct task submission**: use the `/taskcluster-submit-task` skill.
 
 ### Step 6: Push to PR
 
 For every commit being pushed: the step 5 test for that commit must have passed
-locally before pushing. For Docker-based tasks this means `load-task` must be green;
-for other task types, the equivalent test (local worker, direct submission) must pass.
-Never skip this — pushing to CI is not a substitute for local testing.
+locally before pushing. Never skip this — pushing to CI is not a substitute for
+local testing.
 
 **Simulating non-PR events (release, push) from a PR:**
 
@@ -247,18 +164,6 @@ DECISION_TASK_ID=$(gh api "repos/<org/repo>/commits/$HEAD_SHA/check-runs" \
 ```
 /taskcluster-monitor-group <TC_ROOT_URL> <DECISION_TASK_ID>
 ```
-The skill polls the decision task, then the full group, and prints logs for any failures.
-
-Other useful commands:
-```bash
-source /tmp/tc-creds.sh
-TASKCLUSTER_ROOT_URL=<url> taskcluster task def $TASK_ID
-TASKCLUSTER_ROOT_URL=<url> taskcluster task log $TASK_ID
-TASKCLUSTER_ROOT_URL=<url> taskcluster download artifact $DECISION_TASK_ID public/task-graph.json /tmp/task-graph.json
-```
-
-Only use `gh api` to get the decision task ID. For everything else, use `gh pr list`,
-local git commands, and the `taskcluster` CLI.
 
 ### Step 8: Update PR description with verification
 
@@ -286,8 +191,7 @@ Credentials are stored in `~/.config/taskcluster.yml`. To clear them:
 taskcluster config reset --all
 ```
 Never reset credentials one field at a time — removing `clientId` first breaks all
-subsequent `taskcluster` commands (the CLI validates credentials before running anything,
-including other `config reset` calls).
+subsequent `taskcluster` commands.
 
 After clearing, public task artifacts (`task log`, `task status`, `group status`) work
 without credentials — just set `TASKCLUSTER_ROOT_URL`. Only authenticated operations
@@ -298,7 +202,6 @@ without credentials — just set `TASKCLUSTER_ROOT_URL`. Only authenticated oper
 ```bash
 cd <fxci_config_repo> && uv run ci-admin diff --environment firefoxci
 ```
-where `<fxci_config_repo>` comes from `CLAUDE.local.md`.
 
 ## Reference: fxci-config staging deployment
 

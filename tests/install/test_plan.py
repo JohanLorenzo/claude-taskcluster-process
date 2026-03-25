@@ -303,16 +303,18 @@ def test_main_exits_without_prompt_when_no_changes(tmp_path, caplog):
     worktree_rules = sorted(
         f"Bash(git -C {p}/.claude/worktrees/:*)" for p in repo_paths
     )
-    monitor_rule = (
+    skill_rules = [
         f"Bash(uv run {skills_target}/taskcluster-monitor-group"
-        f"/scripts/taskcluster_monitor_group.py:*)"
-    )
+        f"/scripts/taskcluster_monitor_group.py:*)",
+        f"Bash(uv run {skills_target}/taskcluster-submit-task"
+        f"/scripts/taskcluster_submit_task.py:*)",
+    ]
     settings_file = _make_settings(
         tmp_path,
         extra={
             "hooks": {"PreToolUse": [], "PostToolUse": []},
             "permissions": {
-                "allow": sorted([*worktree_rules, monitor_rule]),
+                "allow": sorted([*worktree_rules, *skill_rules]),
                 "defaultMode": "plan",
                 "additionalDirectories": repo_paths,
             },
