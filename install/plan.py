@@ -52,7 +52,7 @@ class Plan:
         )
 
 
-def plan_changes():
+def plan_changes(search_root=None):
     current_settings = load_settings()
     hooks_config = load_hooks_config()
     symlink_ops = compute_symlink_ops()
@@ -62,7 +62,9 @@ def plan_changes():
         logger.error(e)
     if errors:
         sys.exit(1)
-    local_config_diff, new_local_content, new_repos = compute_local_config_update()
+    local_config_diff, new_local_content, new_repos = compute_local_config_update(
+        search_root=search_root
+    )
     new_repo_paths = [str(REPO_ROOT)] + [r["path"] for r in new_repos]
     taskgraph_repo = new_repos[0]["path"] if new_repos else None
     managed_allow = load_permissions_config(

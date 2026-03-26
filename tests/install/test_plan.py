@@ -380,7 +380,7 @@ def test_main_exits_without_prompt_when_no_changes(tmp_path, caplog):
             )
         )
         exc = stack.enter_context(pytest.raises(SystemExit))
-        install.main()
+        install.main(args=[])
 
     assert exc.value.code == 0
     assert "up to date" in caplog.text

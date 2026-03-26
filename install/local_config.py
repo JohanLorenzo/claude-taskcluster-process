@@ -183,7 +183,7 @@ def render_local_config(
     )
 
 
-def compute_local_config_update():
+def compute_local_config_update(search_root=None):
     if not LOCAL_CONFIG_FILE.exists():
         return [], None, []
     old_content = LOCAL_CONFIG_FILE.read_text()
@@ -194,7 +194,7 @@ def compute_local_config_update():
     mozilla_taskgraph_repo = config["mozilla_taskgraph_repo"]
     fxci_config_repo = config["fxci_config_repo"]
     taskcluster_repo = config["taskcluster_repo"]
-    root = get_search_root()
+    root = get_search_root(provided=search_root)
     _, fxci_candidates, mtg_candidates, tc_candidates = find_repo_candidates(root)
     if not mozilla_taskgraph_repo:
         mozilla_taskgraph_repo = pick_repo(
@@ -250,9 +250,14 @@ def compute_local_config_update():
     return diff, new_content, repos
 
 
-def get_search_root():
-    root_input = input("Enter root path to search for repos (e.g., ~/git): ").strip()
-    root = Path(root_input).expanduser().resolve()
+def get_search_root(provided=None):
+    if provided is not None:
+        root = Path(provided).expanduser().resolve()
+    else:
+        root_input = input(
+            "Enter root path to search for repos (e.g., ~/git): "
+        ).strip()
+        root = Path(root_input).expanduser().resolve()
     if not root.is_dir():
         logger.error("ERROR: %s is not a directory.", root)
         sys.exit(1)
@@ -278,9 +283,9 @@ def pick_repo(candidates, label, *, required, hint=None):
     return candidates[int(input("Pick one (number): ").strip()) - 1]
 
 
-def generate_local_config():
+def generate_local_config(search_root=None):
     logger.info("\n--- CLAUDE.local.md setup ---")
-    root = get_search_root()
+    root = get_search_root(provided=search_root)
     logger.info("\nSearching for repos under %s...", root)
     (
         taskgraph_candidates,
