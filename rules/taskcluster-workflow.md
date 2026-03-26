@@ -34,9 +34,17 @@ uv run --with-editable "<taskgraph_repo>" taskgraph
 ## Process
 
 **Planning requirement**: before implementation, the plan must specify for each
-commit which Step 5 test method applies (load-task, direct submission, or local
-worker) and the exact task label to test. Do not defer this decision to
-implementation time.
+commit the full per-commit gate sequence (Steps 3–8):
+- Step 3: the exact param files to validate against and expected task labels
+- Step 4: the review range
+- Step 5: which test method applies (load-task, direct submission, or local
+  worker) and the exact task label to test
+- Step 6: push to PR and the TC_ROOT_URL to monitor against (staging or
+  production, per Step 1)
+- Step 7: monitor with /taskcluster-monitor-group
+- Step 8: update PR description with verification
+
+Do not defer these decisions to implementation time.
 
 ### Step 1: Determine environment
 
@@ -167,6 +175,12 @@ without credentials — just set `TASKCLUSTER_ROOT_URL`. Only authenticated oper
 
 ## Reference: fxci-config validation
 
+Requires Taskcluster credentials with `auth:list-clients` scope. Sign in first:
+```bash
+taskcluster signin
+```
+
+Then run:
 ```bash
 cd <fxci_config_repo> && uv run ci-admin diff --environment firefoxci
 ```
