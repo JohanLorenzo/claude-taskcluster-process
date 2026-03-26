@@ -278,3 +278,60 @@ def test_settings_diff_empty_when_identical(tmp_path):
     with patch.object(settings, "SETTINGS_FILE", tmp_path / "settings.json"):
         diff = settings.settings_diff(data, data)
     assert diff == []
+
+
+def _write_sandbox_config(path, extra=None):
+    data = {
+        "sandbox": {
+            "enabled": True,
+            "excludedCommands": ["docker"],
+            "filesystem": {
+                "allowWrite": ["~/.cache"],
+                "denyWrite": ["~/.ssh"],
+            },
+            "network": {"allowLocalBinding": True},
+        }
+    }
+    if extra:
+        data.update(extra)
+    path.write_text(json.dumps(data, indent=2))
+    return path
+
+
+def test_load_sandbox_config_prepends_repo_paths(tmp_path):
+    cfg = _write_sandbox_config(tmp_path / "sandbox-config.json")
+    with patch.object(settings, "SANDBOX_CONFIG_FILE", cfg):
+        result = settings.load_sandbox_config(repo_paths=["/a/repo", "/b/repo"])
+    assert result["filesystem"]["allowWrite"] == ["/a/repo", "/b/repo", "~/.cache"]
+
+
+def test_load_sandbox_config_preserves_other_keys(tmp_path):
+    cfg = _write_sandbox_config(tmp_path / "sandbox-config.json")
+    with patch.object(settings, "SANDBOX_CONFIG_FILE", cfg):
+        result = settings.load_sandbox_config(repo_paths=[])
+    assert result["enabled"] is True
+    assert result["excludedCommands"] == ["docker"]
+    assert result["filesystem"]["denyWrite"] == ["~/.ssh"]
+    assert result["network"]["allowLocalBinding"] is True
+
+
+def test_load_sandbox_config_missing_returns_none(tmp_path):
+    with patch.object(settings, "SANDBOX_CONFIG_FILE", tmp_path / "missing.json"):
+        assert settings.load_sandbox_config() is None
+
+
+def test_new_settings_adds_sandbox(tmp_path):
+    settings_file = _make_settings(tmp_path)
+    with patch.object(settings, "SETTINGS_FILE", settings_file):
+        old = settings.load_settings()
+    sandbox = {"enabled": True, "excludedCommands": ["docker"]}
+    new = settings.compute_new_settings(old, {}, repo_paths=[], sandbox=sandbox)
+    assert new["sandbox"] == sandbox
+
+
+def test_new_settings_no_sandbox_by_default(tmp_path):
+    settings_file = _make_settings(tmp_path)
+    with patch.object(settings, "SETTINGS_FILE", settings_file):
+        old = settings.load_settings()
+    new = settings.compute_new_settings(old, {}, repo_paths=[])
+    assert "sandbox" not in new

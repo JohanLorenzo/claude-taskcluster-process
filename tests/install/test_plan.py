@@ -1,5 +1,6 @@
 import json
 import logging
+from contextlib import ExitStack
 from unittest.mock import patch
 
 import pytest
@@ -284,18 +285,22 @@ def test_main_exits_without_prompt_when_no_changes(tmp_path, caplog):
     tc = tmp_path / "taskcluster" / "taskcluster"
     tc.mkdir(parents=True)
     local_config_file = tmp_path / "CLAUDE.local.md"
-    repos = [
-        {"name": "taskcluster/taskgraph", "path": str(tg)},
-        {"name": "mozilla-releng/mozilla-taskgraph", "path": str(mtg)},
-        {"name": "mozilla-releng/fxci-config", "path": str(fxci)},
-        {"name": "taskcluster/taskcluster", "path": str(tc)},
-    ]
     local_config_file.write_text(
-        local_config.render_local_config(tg, mtg, fxci, tc, repos)
+        local_config.render_local_config(
+            tg,
+            mtg,
+            fxci,
+            tc,
+            [
+                {"name": "taskcluster/taskgraph", "path": str(tg)},
+                {"name": "mozilla-releng/mozilla-taskgraph", "path": str(mtg)},
+                {"name": "mozilla-releng/fxci-config", "path": str(fxci)},
+                {"name": "taskcluster/taskcluster", "path": str(tc)},
+            ],
+        )
     )
     repo_paths = [str(tmp_path), str(tg), str(mtg), str(fxci), str(tc)]
-    rules_src = tmp_path / "rules"
-    rules_src.mkdir()
+    (tmp_path / "rules").mkdir()
     rules_target = tmp_path / "claude_rules"
     rules_target.mkdir()
     skills_target = tmp_path / "claude_skills"
@@ -311,6 +316,17 @@ def test_main_exits_without_prompt_when_no_changes(tmp_path, caplog):
         f"Bash(uv run {skills_target}/taskcluster-local-test"
         f"/scripts/taskcluster_local_test.py:*)",
     ]
+    empty_perms = tmp_path / "permissions-config.json"
+    empty_perms.write_text("{}")
+    expected_sandbox = {
+        "enabled": True,
+        "excludedCommands": ["docker"],
+        "filesystem": {
+            "allowWrite": [*repo_paths, "~/.cache"],
+            "denyWrite": ["~/.ssh"],
+        },
+        "network": {"allowLocalBinding": True},
+    }
     settings_file = _make_settings(
         tmp_path,
         extra={
@@ -320,37 +336,50 @@ def test_main_exits_without_prompt_when_no_changes(tmp_path, caplog):
                 "defaultMode": "plan",
                 "additionalDirectories": repo_paths,
             },
+            "sandbox": expected_sandbox,
         },
     )
-
-    empty_perms = tmp_path / "permissions-config.json"
-    empty_perms.write_text("{}")
-    with (
-        caplog.at_level(logging.INFO),
-        patch.object(settings, "SETTINGS_FILE", settings_file),
-        patch.object(settings, "HOOKS_CONFIG_FILE", hooks_cfg),
-        patch.object(settings, "PERMISSIONS_CONFIG_FILE", empty_perms),
-        patch.object(settings, "REPO_ROOT", tmp_path),
-        patch.object(settings, "SKILLS_DIR", skills_target),
-        patch.object(local_config, "LOCAL_CONFIG_FILE", local_config_file),
-        patch.object(symlinks, "REPO_ROOT", tmp_path),
-        patch.object(symlinks, "RULES_DIR", rules_target),
-        patch.object(skills, "REPO_ROOT", tmp_path),
-        patch.object(skills, "SKILLS_DIR", skills_target),
-        patch.object(preflight, "RULES_DIR", rules_target),
-        patch.object(preflight, "SKILLS_DIR", skills_target),
-        patch.object(preflight, "SETTINGS_FILE", settings_file),
-        patch.object(preflight, "CLAUDE_DIR", tmp_path),
-        patch.object(install_plan, "REPO_ROOT", tmp_path),
-        patch.object(install_plan, "SKILLS_DIR", skills_target),
-        patch.object(install, "LOCAL_CONFIG_FILE", local_config_file),
-        # First input: search root prompt. Second input: should never be reached.
-        patch(
-            "builtins.input",
-            side_effect=[str(tmp_path), AssertionError("should not prompt for apply")],
-        ),
-        pytest.raises(SystemExit) as exc,
-    ):
+    with ExitStack() as stack:
+        stack.enter_context(caplog.at_level(logging.INFO))
+        stack.enter_context(patch.object(settings, "SETTINGS_FILE", settings_file))
+        stack.enter_context(patch.object(settings, "HOOKS_CONFIG_FILE", hooks_cfg))
+        stack.enter_context(
+            patch.object(settings, "PERMISSIONS_CONFIG_FILE", empty_perms)
+        )
+        stack.enter_context(
+            patch.object(
+                install_plan, "load_sandbox_config", return_value=expected_sandbox
+            )
+        )
+        stack.enter_context(patch.object(settings, "REPO_ROOT", tmp_path))
+        stack.enter_context(patch.object(settings, "SKILLS_DIR", skills_target))
+        stack.enter_context(
+            patch.object(local_config, "LOCAL_CONFIG_FILE", local_config_file)
+        )
+        stack.enter_context(patch.object(symlinks, "REPO_ROOT", tmp_path))
+        stack.enter_context(patch.object(symlinks, "RULES_DIR", rules_target))
+        stack.enter_context(patch.object(skills, "REPO_ROOT", tmp_path))
+        stack.enter_context(patch.object(skills, "SKILLS_DIR", skills_target))
+        stack.enter_context(patch.object(preflight, "RULES_DIR", rules_target))
+        stack.enter_context(patch.object(preflight, "SKILLS_DIR", skills_target))
+        stack.enter_context(patch.object(preflight, "SETTINGS_FILE", settings_file))
+        stack.enter_context(patch.object(preflight, "CLAUDE_DIR", tmp_path))
+        stack.enter_context(patch.object(install_plan, "REPO_ROOT", tmp_path))
+        stack.enter_context(patch.object(install_plan, "SKILLS_DIR", skills_target))
+        stack.enter_context(
+            patch.object(install, "LOCAL_CONFIG_FILE", local_config_file)
+        )
+        stack.enter_context(
+            patch(
+                "builtins.input",
+                # First input: search root prompt. Second: should never be reached.
+                side_effect=[
+                    str(tmp_path),
+                    AssertionError("should not prompt for apply"),
+                ],
+            )
+        )
+        exc = stack.enter_context(pytest.raises(SystemExit))
         install.main()
 
     assert exc.value.code == 0

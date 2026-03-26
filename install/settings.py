@@ -7,6 +7,7 @@ from .constants import (
     HOOKS_CONFIG_FILE,
     PERMISSIONS_CONFIG_FILE,
     REPO_ROOT,
+    SANDBOX_CONFIG_FILE,
     SETTINGS_FILE,
     SKILLS_DIR,
 )
@@ -86,7 +87,20 @@ def load_permissions_config(repo_paths=None, taskgraph_repo=None):
     return rules
 
 
-def compute_new_settings(old_settings, hooks_config, repo_paths, managed_allow=None):
+def load_sandbox_config(repo_paths=None):
+    if not SANDBOX_CONFIG_FILE.exists():
+        return None
+    with SANDBOX_CONFIG_FILE.open() as f:
+        data = json.load(f)
+    sandbox = data["sandbox"]
+    existing = sandbox.setdefault("filesystem", {}).get("allowWrite", [])
+    sandbox["filesystem"]["allowWrite"] = list(repo_paths or []) + existing
+    return sandbox
+
+
+def compute_new_settings(
+    old_settings, hooks_config, repo_paths, managed_allow=None, sandbox=None
+):
     new_settings = copy.deepcopy(old_settings)
     new_settings["hooks"] = hooks_config
     perms = new_settings.setdefault("permissions", {})
@@ -95,6 +109,8 @@ def compute_new_settings(old_settings, hooks_config, repo_paths, managed_allow=N
     if managed_allow:
         existing = set(perms.get("allow", []))
         perms["allow"] = sorted(existing | set(managed_allow))
+    if sandbox is not None:
+        new_settings["sandbox"] = sandbox
     return new_settings
 
 

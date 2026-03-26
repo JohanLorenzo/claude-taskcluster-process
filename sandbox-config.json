@@ -1,0 +1,30 @@
+{
+  "sandbox": {
+    "enabled": true,
+    "excludedCommands": ["docker"],
+    "filesystem": {
+      "allowWrite": ["~/.cache"],
+      "denyWrite": [
+        "~/.ssh",
+        "~/.gnupg",
+        "~/.bashrc",
+        "~/.zshrc",
+        "~/.profile",
+        "~/.bash_profile",
+        "~/.config/taskcluster.yml"
+      ]
+    },
+    "network": {
+      "allowLocalBinding": true,
+      "allowedDomains": [
+        "github.com",
+        "api.github.com",
+        "firefox-ci-tc.services.mozilla.com",
+        "stage.taskcluster.nonprod.webservices.mozgcp.net",
+        "pypi.org",
+        "files.pythonhosted.org",
+        "bugzilla.mozilla.org"
+      ]
+    }
+  }
+}

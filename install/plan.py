@@ -18,6 +18,7 @@ from .settings import (
     compute_new_settings,
     load_hooks_config,
     load_permissions_config,
+    load_sandbox_config,
     load_settings,
     settings_diff,
 )
@@ -67,11 +68,13 @@ def plan_changes():
     managed_allow = load_permissions_config(
         repo_paths=new_repo_paths, taskgraph_repo=taskgraph_repo
     )
+    sandbox_config = load_sandbox_config(repo_paths=new_repo_paths)
     new_settings = compute_new_settings(
         current_settings,
         hooks_config,
         repo_paths=new_repo_paths,
         managed_allow=managed_allow,
+        sandbox=sandbox_config,
     )
     return Plan(
         local_config_diff=local_config_diff,
