@@ -208,6 +208,35 @@ When using a personal fork for staging validation, add a temporary project entry
 fxci-config (same PR, separate commit) with the fork's repo URL, the correct
 trust domain, level-1 branches, and `github-taskgraph: true`. Remove it before merging.
 
+## Reference: Known pitfalls when initializing taskgraph in a repo
+
+**`taskcluster/` directory shadows the `taskcluster` PyPI package**
+
+Creating the `taskcluster/` CI directory in a repo whose Python code imports the
+`taskcluster` library causes mypy (and Python's import system) to treat the directory
+as a namespace package, hiding the installed library. Symptoms: mypy reports
+`Module has no attribute "Queue"` (or similar) on code that imports from `taskcluster`.
+
+Fix — add to `pyproject.toml` at the repo root:
+```toml
+[tool.ruff.lint.isort]
+known-third-party = ["taskcluster"]
+
+[tool.mypy]
+namespace_packages = false
+```
+
+**`head_ref` vs `short_head_ref` in parameters and test params**
+
+The `.taskcluster.yml` passes `head_ref = event.ref` which is `refs/heads/master` for
+push events. `decision_parameters` must NOT modify `head_ref` in place — instead, expose
+a separate `short_head_ref` parameter with the prefix stripped. Transforms that need the
+branch name (e.g. index routes) must use `short_head_ref`, not `head_ref`.
+
+Test params files must keep `head_ref: refs/heads/master` (the raw value the decision
+task receives). They must also set `short_head_ref: master` to reflect what
+`decision_parameters` computes.
+
 ## Reference: Scriptworker-specific guidance
 
 - Use treeherder-cli to find a recent example of a similar task on `mozilla-release`.
