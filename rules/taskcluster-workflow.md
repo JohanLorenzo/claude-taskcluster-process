@@ -93,6 +93,9 @@ uv run --with-editable "<taskgraph_repo>" taskgraph target-graph \
 ```
 On the Firefox repo: `./mach taskgraph target-graph -p <params>`
 
+`--diff` compares the current state against HEAD. Run it only after committing —
+an uncommitted working directory causes the command to abort.
+
 ### Step 4: Self-review
 
 Gate: must be PASS or PASS-WITH-NOTES before proceeding to step 5.
@@ -179,6 +182,11 @@ After clearing, public task artifacts (`task log`, `task status`, `group status`
 without credentials — just set `TASKCLUSTER_ROOT_URL`. Only authenticated operations
 (task creation, private artifacts) need `taskcluster signin`.
 
+Stream a task's live log:
+```bash
+TASKCLUSTER_ROOT_URL=<TC_ROOT_URL> taskcluster task log <task-id>
+```
+
 ## Reference: fxci-config validation
 
 Requires Taskcluster credentials with `auth:list-clients` scope. Sign in first:
@@ -205,3 +213,33 @@ trust domain, level-1 branches, and `github-taskgraph: true`. Remove it before m
 - Use treeherder-cli to find a recent example of a similar task on `mozilla-release`.
 - Avoid production scopes — only use them in the final test phases.
 - Test against the staging scriptworker environment first.
+
+## Reference: Firefox release task testing
+
+To verify release tasks (e.g. `release-balrog-submit-toplevel`) on the Firefox repo,
+use `./mach try release` to simulate a release on try:
+
+```bash
+./mach try release --migration 'main-to-beta' \
+  --version "$(cat browser/config/version.txt | sed 's/a/b/')" \
+  --tasks release-sim --disable-pgo
+```
+
+**Getting the hg revision** after the push (needed for ShipIt staging):
+```bash
+curl -s "https://api.lando.services.mozilla.com/landing_jobs/<lando-job-id>"
+```
+The lando job ID is printed in the `./mach try release` output.
+
+**Finding the decision task** once indexed:
+```bash
+TASKCLUSTER_ROOT_URL=https://firefox-ci-tc.services.mozilla.com \
+  taskcluster api index findTask gecko.v2.try.revision.<hg-revision>.taskgraph.decision
+```
+
+**Listing tasks** spawned by a ship action task (they form their own task group,
+separate from the decision task group):
+```bash
+TASKCLUSTER_ROOT_URL=https://firefox-ci-tc.services.mozilla.com \
+  taskcluster group list <action-task-id> --all
+```
