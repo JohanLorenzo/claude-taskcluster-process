@@ -6,7 +6,6 @@
       "allowWrite": ["~/.cache"],
       "denyWrite": [
         "~/.ssh",
-        "~/.gnupg",
         "~/.bashrc",
         "~/.zshrc",
         "~/.profile",
