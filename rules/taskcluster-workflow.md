@@ -46,6 +46,12 @@ commit the full per-commit gate sequence (Steps 3–8):
 
 Do not defer these decisions to implementation time.
 
+**Migration rule**: before writing any task command, read the existing CI/CD
+configuration (whatever form it takes: `.taskcluster.yml`, `Jenkinsfile`,
+GitHub Actions workflows, shell scripts called from CI, etc.) to understand what
+each task is already doing. Do not reimplement logic that already exists in a
+script — adapt the script for the new environment instead.
+
 ### Step 1: Determine environment
 
 - Changing scopes, worker configs, or fxci-config? → staging
