@@ -245,14 +245,8 @@ task receives). They must also set `short_head_ref: master` to reflect what
 
 ## Reference: Firefox release task testing
 
-To verify release tasks (e.g. `release-balrog-submit-toplevel`) on the Firefox repo,
-use `./mach try release` to simulate a release on try:
-
-```bash
-./mach try release --migration 'main-to-beta' \
-  --version "$(cat browser/config/version.txt | sed 's/a/b/')" \
-  --tasks release-sim --disable-pgo
-```
+For `mach try release` commands and `--tasks` flag documentation, see the
+[relengdocs staging release guide](https://mozilla-releng.net/relengdocs/how-to/releaseduty/desktop/staging-release.html).
 
 **Getting the hg revision** after the push (needed for ShipIt staging):
 ```bash
