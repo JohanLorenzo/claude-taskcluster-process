@@ -189,14 +189,14 @@ TASKCLUSTER_ROOT_URL=<TC_ROOT_URL> taskcluster task log <task-id>
 
 ## Reference: fxci-config validation
 
-Requires Taskcluster credentials with `auth:list-clients` scope. Sign in first:
-```bash
-taskcluster signin
-```
+Requires Taskcluster credentials with `auth:list-clients` scope and a GitHub token
+to avoid rate limits. See fxci-config's README "Initial Setup" for details.
 
-Then run:
 ```bash
-cd <fxci_config_repo> && uv run ci-admin diff --environment firefoxci
+TASKCLUSTER_ROOT_URL=https://firefox-ci-tc.services.mozilla.com \
+  taskcluster signin --scope auth:list-clients > $TMPDIR/tc-creds.sh
+source $TMPDIR/tc-creds.sh
+GITHUB_TOKEN=$(gh auth token) uv run ci-admin diff --environment firefoxci
 ```
 
 ## Reference: fxci-config staging deployment

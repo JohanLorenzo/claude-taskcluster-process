@@ -25,6 +25,8 @@
 - Set `--base` explicitly — don't assume the default branch
 - Always use `--draft` when creating PRs
 - Reference related GitHub issues or Bugzilla bugs in the PR body
+- When referencing a Bugzilla bug, use a hyperlink: `[Bug NNNNN](https://bugzilla.mozilla.org/show_bug.cgi?id=NNNNN)`
+- Summary section is optional when the PR title already conveys the change
 
 PR body template (use HEREDOC with `gh pr create --body`):
 
@@ -41,6 +43,12 @@ PR body template (use HEREDOC with `gh pr create --body`):
 
 <How the change was tested — task links, log excerpts, local test output.>
 ~~~
+
+## Environment Variables
+
+- `GITHUB_TOKEN=$(gh auth token)` — use this to populate `GITHUB_TOKEN` for any
+  command that needs GitHub API access (e.g., `ci-admin diff`, rate-limit avoidance).
+  Some repos document additional setup in their README "Initial Setup" section.
 
 ## API Interaction Rules
 - NEVER assume an API endpoint exists. Always verify endpoints work (via curl or equivalent) before writing implementation code around them.
