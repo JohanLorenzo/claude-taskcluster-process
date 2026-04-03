@@ -41,6 +41,16 @@ worktree manually:
 git worktree add <path> -b <branch> <remote>/<default-branch>
 ```
 
+### Rebasing a stale worktree
+
+When rebasing a long-lived worktree onto a significantly newer `main`, new files
+added to `main` appear as untracked conflicts and block the rebase. Run:
+```bash
+git clean -fd
+```
+before the rebase. These files are safe to remove — they exist in `origin/main`
+and will be restored as tracked files after the rebase completes.
+
 ## Cleanup at plan start
 
 When entering any tracked repository, list all existing worktrees:

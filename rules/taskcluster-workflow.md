@@ -248,6 +248,12 @@ task receives). They must also set `short_head_ref: master` to reflect what
 For `mach try release` commands and `--tasks` flag documentation, see the
 [relengdocs staging release guide](https://mozilla-releng.net/relengdocs/how-to/releaseduty/desktop/staging-release.html).
 
+**Before each new push**, cancel the previous try group to free CI resources:
+```bash
+TASKCLUSTER_ROOT_URL=https://firefox-ci-tc.services.mozilla.com \
+  taskcluster group cancel <previous-decision-task-id>
+```
+
 **Getting the hg revision** after the push (needed for ShipIt staging):
 ```bash
 curl -s "https://api.lando.services.mozilla.com/landing_jobs/<lando-job-id>"

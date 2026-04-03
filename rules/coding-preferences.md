@@ -44,6 +44,36 @@ PR body template (use HEREDOC with `gh pr create --body`):
 <How the change was tested — task links, log excerpts, local test output.>
 ~~~
 
+## Phabricator Revisions
+
+### Setting the Test Plan field
+
+Use `--test-plan` with `--single` (required — `--test-plan` does not work on a
+stack range):
+```bash
+moz-phab submit --no-wip --single <commit> --test-plan "..."
+```
+
+`--message` creates a general comment (visible in the activity feed), not the
+Summary field. The Summary is populated from the commit body (lines below the
+subject line).
+
+### Testing Policy tags
+
+Firefox requires a Testing Policy project tag before landing. Set it via the
+Phabricator web UI. Common choices:
+- `testing-exception-elsewhere` — test coverage lives outside this repo
+  (e.g. end-to-end staging verification)
+- `testing-exception-unchanged` — docs-only or config-only, no behavior change
+
+### Direct log links
+
+When linking to CI task logs in test plans or PR descriptions, use `#L<N>` anchors
+to point to the specific line:
+```
+https://firefox-ci-tc.services.mozilla.com/tasks/<id>/runs/0/logs/public/logs/live.log#L276
+```
+
 ## Environment Variables
 
 - `GITHUB_TOKEN=$(gh auth token)` — use this to populate `GITHUB_TOKEN` for any
