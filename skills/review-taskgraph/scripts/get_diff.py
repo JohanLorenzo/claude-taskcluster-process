@@ -81,6 +81,48 @@ def _detect_commit_range(cwd=None):
     return _detect_base_range(cwd=cwd)
 
 
+def _get_local_diff(arg):
+    cwd = _git_cwd()
+    if arg and ".." in arg:
+        result = subprocess.run(
+            ["git", "diff", arg],
+            capture_output=True,
+            text=True,
+            check=False,
+            cwd=cwd,
+        )
+    elif arg and re.match(r"^[0-9a-f]{7,40}$", arg):
+        result = subprocess.run(
+            ["git", "show", arg],
+            capture_output=True,
+            text=True,
+            check=False,
+            cwd=cwd,
+        )
+    else:
+        result = subprocess.run(
+            ["git", "diff", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=False,
+            cwd=cwd,
+        )
+        if result.returncode == 0 and not result.stdout.strip():
+            diff, description = _detect_commit_range(cwd=cwd)
+            if diff:
+                print(
+                    f"No uncommitted changes. Reviewing {description}.",
+                    file=sys.stderr,
+                )
+                return diff
+            print("Diff is empty — nothing to review.", file=sys.stderr)
+            sys.exit(1)
+    if result.returncode != 0:
+        print(result.stderr or "Command failed", file=sys.stderr)
+        sys.exit(1)
+    return result.stdout
+
+
 def get_diff(arg=None):
     if arg and arg.startswith("https://github.com/"):
         match = re.match(r"https://github\.com/([^/]+/[^/]+)/pull/(\d+)", arg)
@@ -112,33 +154,7 @@ def get_diff(arg=None):
             check=False,
         )
     else:
-        cwd = _git_cwd()
-        if arg and ".." in arg:
-            result = subprocess.run(
-                ["git", "diff", arg],
-                capture_output=True,
-                text=True,
-                check=False,
-                cwd=cwd,
-            )
-        else:
-            result = subprocess.run(
-                ["git", "diff", "HEAD"],
-                capture_output=True,
-                text=True,
-                check=False,
-                cwd=cwd,
-            )
-            if result.returncode == 0 and not result.stdout.strip():
-                diff, description = _detect_commit_range(cwd=cwd)
-                if diff:
-                    print(
-                        f"No uncommitted changes. Reviewing {description}.",
-                        file=sys.stderr,
-                    )
-                    return diff
-                print("Diff is empty — nothing to review.", file=sys.stderr)
-                sys.exit(1)
+        return _get_local_diff(arg)
 
     if result.returncode != 0:
         print(result.stderr or "Command failed", file=sys.stderr)
