@@ -81,6 +81,17 @@ def _detect_commit_range(cwd=None):
     return _detect_base_range(cwd=cwd)
 
 
+def _is_git_ref(arg, cwd=None):
+    result = subprocess.run(
+        ["git", "rev-parse", "--verify", arg],
+        capture_output=True,
+        text=True,
+        check=False,
+        cwd=cwd,
+    )
+    return result.returncode == 0
+
+
 def _get_local_diff(arg):
     cwd = _git_cwd()
     if arg and ".." in arg:
@@ -91,7 +102,7 @@ def _get_local_diff(arg):
             check=False,
             cwd=cwd,
         )
-    elif arg and re.match(r"^[0-9a-f]{7,40}$", arg):
+    elif arg and _is_git_ref(arg, cwd):
         result = subprocess.run(
             ["git", "show", arg],
             capture_output=True,
