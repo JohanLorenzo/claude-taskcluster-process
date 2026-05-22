@@ -20,6 +20,21 @@
 
 ## `.taskcluster.yml` correctness
 
+- **`XPI_PIP_REQUIREMENTS` and `requirements.txt`**: when a decision task needs
+  runtime pip packages, set `XPI_PIP_REQUIREMENTS: taskcluster/requirements.txt`
+  in `.taskcluster.yml` and generate the pinned file with all transitive deps and
+  hashes by running inside the actual decision image:
+  ```bash
+  docker run --rm <decision-image> bash -c "
+  uv pip compile --generate-hashes --no-header --python /usr/bin/python3 - <<'EOF'
+  package-a==X.Y.Z
+  package-b==X.Y.Z
+  EOF
+  " > taskcluster/requirements.txt
+  ```
+  `run-task` uses `--require-hashes` mode, which requires ALL transitive
+  dependencies to be pinned — not just direct ones.
+
 - **Pin decision image by digest**: the `image:` field must include both the version
   tag and the manifest digest, e.g.
   `mozillareleases/taskgraph:decision-v20.0.0@sha256:<digest>`. A tag alone is
