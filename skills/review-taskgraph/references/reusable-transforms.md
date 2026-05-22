@@ -181,3 +181,14 @@ Registered payload builders for scriptworker task types:
 - `scriptworker-shipit` — Ship-It release management
 - `scriptworker-lando` — merge day operations, tagging, version bumps
 - `scriptworker-bitrise` — Bitrise CI integration
+
+To register these in a non-Firefox project, call `mozilla_taskgraph.register(graph_config)`
+from within the project's own `register()` function.
+
+**Caveat for `scriptworker-lando`**: `build_lando_payload` unconditionally calls
+`get_release_config(config)`, which reads `app_version`, `next_version`, and
+`build_number` from `config.params`. In non-Firefox projects these are not set by
+`decision_parameters` during action callbacks (because `taskgraph_decision` skips
+`get_decision_parameters` when `parameters` is pre-supplied). They must be set
+explicitly in the action callback before calling `taskgraph_decision`, otherwise
+the payload will contain `None` values and fail scriptworker schema validation.

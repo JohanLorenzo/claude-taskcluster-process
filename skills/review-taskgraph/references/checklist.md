@@ -12,6 +12,11 @@
 - **`forbid_unknown_fields=False`**: required when the schema allows pass-through
   fields (e.g., fields consumed by later transforms). If all fields are consumed by
   this transform, use the default (`True`).
+- **`extend_parameters_schema` needs `rename=None`**: the `Schema` base class
+  defaults to `rename="kebab"`, converting `xpi_name` → `xpi-name`. Taskgraph
+  parameters use underscore keys, so `Parameters.check()` will report them as
+  unknown. Always use `rename=None` when subclassing `Schema` for
+  `extend_parameters_schema`.
 
 ## `.taskcluster.yml` correctness
 
