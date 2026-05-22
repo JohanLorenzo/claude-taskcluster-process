@@ -226,6 +226,19 @@ known-third-party = ["taskcluster"]
 namespace_packages = false
 ```
 
+**Action hook IDs include the `.taskcluster.yml` hash**
+
+Action hooks are identified by `project-{trust_domain}/in-tree-action-{level}-{perm}/{tcyml_hash}`.
+Changing `.taskcluster.yml` changes the hash, invalidating existing hooks. After pushing
+the updated file, `ci-admin apply` must be run to register the new hook:
+
+- **Staging**: comment `/taskcluster apply-staging` on an open fxci-config PR, or run
+  `ci-admin apply --environment staging` manually with staging TC credentials.
+- **Production**: merging any commit to fxci-config `main` triggers `ci-admin apply`
+  automatically. If no fxci-config change is needed, merge a trivial commit to trigger it.
+
+Until the new hook is registered, Ship-It will fail with "No such hook".
+
 **`head_ref` vs `short_head_ref` in parameters and test params**
 
 The `.taskcluster.yml` passes `head_ref = event.ref` which is `refs/heads/master` for
