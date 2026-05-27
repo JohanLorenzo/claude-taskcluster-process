@@ -25,6 +25,14 @@ uv run --with-editable "<taskgraph_repo>" taskgraph
 - Shell state does not persist between Bash tool calls. Always inline env vars in the
   same command that uses them (e.g. `TASKCLUSTER_ROOT_URL=... taskcluster ...`) or
   `source` the creds file in the same command.
+- Staging first: for fxci-config grant or scriptworker scope changes, always design
+  and test the staging path before production. Look at both the production AND staging
+  grant blocks in `grants.d/*.yml`. Plan staging changes first, with explicit staging
+  verification steps. Reference the staging `alias` names (e.g. `staging-xpi-manifest`)
+  and staging lando repos (e.g. `staging-firefox-main`) explicitly in the plan.
+- PRs must target the main branch of the upstream repo (e.g. `master` for
+  scriptworker-scripts). Never target production/deployment branches
+  (`production-*`, `dev-*`) with PRs.
 
 ## Taskcluster instances
 
@@ -250,11 +258,66 @@ Test params files must keep `head_ref: refs/heads/master` (the raw value the dec
 task receives). They must also set `short_head_ref: master` to reflect what
 `decision_parameters` computes.
 
+## Reference: Multi-repo scope changes
+
+When a scope change spans multiple repos (landoscript validation + taskgraph generation
++ fxci-config grants + downstream consumers), follow this checklist:
+
+### Planning checklist
+
+1. **Identify all affected repos.** A scope change typically touches:
+   - scriptworker-scripts (scope validation)
+   - mozilla-taskgraph (scope generation in payload builder)
+   - fxci-config (scope grants, staging AND production)
+   - Downstream repos that pin mozilla-taskgraph (e.g. xpi-manifest)
+   - firefox/gecko_taskgraph (Firefox-specific payload builder + uplift)
+
+2. **Design staging first.** Look at both staging and production grant blocks in
+   `grants.d/*.yml`. Plan staging changes as a separate PR that merges first.
+   Reference staging alias names (e.g. `staging-xpi-manifest`) and staging lando
+   repos (e.g. `staging-firefox-main`) explicitly.
+
+3. **fxci-config staging grants come first** in the merge order — they must be in
+   place before anything can be tested on staging.
+
+4. **Include downstream dependency updates.** Repos that pin mozilla-taskgraph
+   need version bumps (e.g. `taskcluster/requirements.txt`).
+
+5. **Include Firefox uplift.** Changes to gecko_taskgraph need Phabricator
+   submission + uplift to all supported branches (beta, release, ESR).
+
+6. **Include cleanup.** Removing old grants and old scope support must be in the
+   same plan, not deferred to a follow-up.
+
+### Merge order template
+
+```
+1. fxci-config staging PR → apply-staging + merge
+2. scriptworker-scripts → deploy to staging via dev-* branch, then merge to main
+3. mozilla-taskgraph → merge + publish
+4. Downstream repos → update dependency pin, trigger staging e2e test
+5. fxci-config production PR → merge after staging verification
+6. firefox → land on central, uplift to supported branches
+7. fxci-config cleanup → remove old grants
+8. scriptworker-scripts cleanup → remove transition fallback
+```
+
+### Transition strategy
+
+When adding a new scope format that replaces an old one:
+- The scriptworker must accept BOTH old and new scopes during transition
+- fxci-config must grant BOTH old and new scopes during transition
+- Cleanup (removing old scope support) happens after all repos generate the new format
+- Deploy to staging via `dev-{scriptworker-name}` BEFORE merging PR to main
+
 ## Reference: Scriptworker-specific guidance
 
 - Use treeherder-cli to find a recent example of a similar task on `mozilla-release`.
 - Avoid production scopes — only use them in the final test phases.
 - Test against the staging scriptworker environment first.
+- scriptworker-scripts uses per-script deployment branches: `dev-{name}` for staging,
+  `production-{name}` for production. PRs target the main branch (`master`), not these
+  deployment branches.
 
 ## Reference: Firefox release task testing
 
