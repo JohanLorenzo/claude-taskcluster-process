@@ -1,9 +1,9 @@
 {
   "sandbox": {
     "enabled": true,
-    "excludedCommands": ["docker"],
+    "excludedCommands": ["docker *", "gh *", "taskcluster *"],
     "filesystem": {
-      "allowWrite": ["~/.cache"],
+      "allowWrite": ["~/.cache", "~/.mozbuild"],
       "denyWrite": [
         "~/.ssh",
         "~/.bashrc",
@@ -22,7 +22,8 @@
         "stage.taskcluster.nonprod.webservices.mozgcp.net",
         "pypi.org",
         "files.pythonhosted.org",
-        "bugzilla.mozilla.org"
+        "bugzilla.mozilla.org",
+        "lando.moz.tools"
       ]
     }
   }
