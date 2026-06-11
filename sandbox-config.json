@@ -23,7 +23,12 @@
         "pypi.org",
         "files.pythonhosted.org",
         "bugzilla.mozilla.org",
-        "lando.moz.tools"
+        "lando.moz.tools",
+        "www.googleapis.com",
+        "crates.io",
+        "index.crates.io",
+        "static.crates.io",
+        "mozilla-hub.atlassian.net"
       ]
     }
   }
