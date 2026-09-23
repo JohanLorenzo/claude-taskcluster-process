@@ -60,5 +60,3 @@ def print_skill_ops(ops):
             )
         elif op[0] == "replace_dir":
             logger.info("  ! skip (regular dir): %s", op[2])
-        elif op[0] == "noop":
-            logger.info("  = no change: %s", op[2])

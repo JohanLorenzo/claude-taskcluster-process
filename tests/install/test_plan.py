@@ -87,15 +87,49 @@ def test_plan_has_changes_true_when_actionable_ops(tmp_path):
     assert plan.has_changes
 
 
-def test_preview_changes_prints_no_change_when_up_to_date(caplog, tmp_path):
+def test_preview_changes_prints_nothing_when_up_to_date(caplog, tmp_path):
+    src = tmp_path / "foo.md"
+    src.write_text("x")
+    target = tmp_path / "link.md"
 
     plan = Plan(
         local_config_diff=[],
         new_local_content=None,
         settings_diff=[],
         new_settings={},
-        symlink_ops=[],
+        symlink_ops=[("noop", src, target)],
         actionable_ops=[],
+        skill_ops=[("noop", src, target)],
+        actionable_skill_ops=[],
+    )
+    with (
+        caplog.at_level(logging.INFO),
+        patch.object(install_plan, "LOCAL_CONFIG_FILE", tmp_path / "CLAUDE.local.md"),
+        patch.object(install_plan, "SETTINGS_FILE", tmp_path / "settings.json"),
+    ):
+        install_plan.preview_changes(plan)
+    assert "no change" not in caplog.text
+    assert "symlinks ---" not in caplog.text
+
+
+def test_preview_changes_only_prints_actionable_ops(caplog, tmp_path):
+    noop_src = tmp_path / "unchanged.md"
+    noop_src.write_text("x")
+    noop_target = tmp_path / "unchanged-link.md"
+    new_src = tmp_path / "new.md"
+    new_src.write_text("y")
+    new_target = tmp_path / "new-link.md"
+
+    plan = Plan(
+        local_config_diff=[],
+        new_local_content=None,
+        settings_diff=[],
+        new_settings={},
+        symlink_ops=[
+            ("noop", noop_src, noop_target),
+            ("create", new_src, new_target),
+        ],
+        actionable_ops=[("create", new_src, new_target)],
         skill_ops=[],
         actionable_skill_ops=[],
     )
@@ -105,7 +139,8 @@ def test_preview_changes_prints_no_change_when_up_to_date(caplog, tmp_path):
         patch.object(install_plan, "SETTINGS_FILE", tmp_path / "settings.json"),
     ):
         install_plan.preview_changes(plan)
-    assert "no change" in caplog.text
+    assert "new symlink" in caplog.text
+    assert str(noop_target) not in caplog.text
 
 
 def test_preview_changes_prints_warnings(caplog, tmp_path):

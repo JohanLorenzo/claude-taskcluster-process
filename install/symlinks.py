@@ -58,5 +58,3 @@ def print_symlink_ops(ops):
                 logger.info("".join(diff[:40]))
             else:
                 logger.info("  ~ replace file with symlink (same content): %s", op[2])
-        elif op[0] == "noop":
-            logger.info("  = no change: %s", op[2])

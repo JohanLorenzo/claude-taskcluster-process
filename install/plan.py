@@ -107,14 +107,12 @@ def preview_changes(plan):
         if diff:
             logger.info("\n--- %s ---", path)
             logger.info("".join(diff))
-        else:
-            logger.info("\n= no change: %s", path)
-    if plan.symlink_ops:
+    if plan.actionable_ops:
         logger.info("\n--- rules/ symlinks ---")
-        print_symlink_ops(plan.symlink_ops)
-    if plan.skill_ops:
+        print_symlink_ops(plan.actionable_ops)
+    if plan.actionable_skill_ops:
         logger.info("\n--- skills/ symlinks ---")
-        print_skill_ops(plan.skill_ops)
+        print_skill_ops(plan.actionable_skill_ops)
 
 
 def write_files(plan):
