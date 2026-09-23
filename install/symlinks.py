@@ -1,7 +1,7 @@
 import logging
 
 from .constants import REPO_ROOT, RULES_DIR
-from .utils import unified_diff
+from .utils import format_diff, unified_diff
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +55,6 @@ def print_symlink_ops(ops):
             diff = unified_diff(target_text, src_text, str(op[2]), str(op[1]))
             if diff:
                 logger.info("  ~ replace file with symlink: %s", op[2])
-                logger.info("".join(diff[:40]))
+                logger.info(format_diff(diff[:40]))
             else:
                 logger.info("  ~ replace file with symlink (same content): %s", op[2])

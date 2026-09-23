@@ -26,6 +26,7 @@ from .settings import (
 )
 from .skills import compute_skill_ops, print_skill_ops
 from .symlinks import compute_symlink_ops, print_symlink_ops
+from .utils import format_diff
 
 GIT = shutil.which("git") or "git"
 
@@ -106,7 +107,7 @@ def preview_changes(plan):
     ]:
         if diff:
             logger.info("\n--- %s ---", path)
-            logger.info("".join(diff))
+            logger.info(format_diff(diff))
     if plan.actionable_ops:
         logger.info("\n--- rules/ symlinks ---")
         print_symlink_ops(plan.actionable_ops)
