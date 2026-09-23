@@ -16,6 +16,11 @@ def _write_json(path, data):
     path.write_text(json.dumps(data, indent=2) + "\n")
 
 
+def _patch_object_all(stack, targets):
+    for obj, attr, value in targets:
+        stack.enter_context(patch.object(obj, attr, value))
+
+
 def _make_settings(tmp_path, extra=None):
     data = {
         "alwaysThinkingEnabled": True,
@@ -318,6 +323,8 @@ def test_main_exits_without_prompt_when_no_changes(tmp_path, caplog):
     ]
     empty_perms = tmp_path / "permissions-config.json"
     empty_perms.write_text("{}")
+    empty_settings_config = tmp_path / "settings-config.json"
+    empty_settings_config.write_text("{}")
     expected_sandbox = {
         "enabled": True,
         "excludedCommands": ["docker"],
@@ -341,33 +348,33 @@ def test_main_exits_without_prompt_when_no_changes(tmp_path, caplog):
     )
     with ExitStack() as stack:
         stack.enter_context(caplog.at_level(logging.INFO))
-        stack.enter_context(patch.object(settings, "SETTINGS_FILE", settings_file))
-        stack.enter_context(patch.object(settings, "HOOKS_CONFIG_FILE", hooks_cfg))
-        stack.enter_context(
-            patch.object(settings, "PERMISSIONS_CONFIG_FILE", empty_perms)
+        _patch_object_all(
+            stack,
+            [
+                (settings, "SETTINGS_FILE", settings_file),
+                (settings, "HOOKS_CONFIG_FILE", hooks_cfg),
+                (settings, "PERMISSIONS_CONFIG_FILE", empty_perms),
+                (settings, "SETTINGS_CONFIG_FILE", empty_settings_config),
+                (settings, "REPO_ROOT", tmp_path),
+                (settings, "SKILLS_DIR", skills_target),
+                (local_config, "LOCAL_CONFIG_FILE", local_config_file),
+                (symlinks, "REPO_ROOT", tmp_path),
+                (symlinks, "RULES_DIR", rules_target),
+                (skills, "REPO_ROOT", tmp_path),
+                (skills, "SKILLS_DIR", skills_target),
+                (preflight, "RULES_DIR", rules_target),
+                (preflight, "SKILLS_DIR", skills_target),
+                (preflight, "SETTINGS_FILE", settings_file),
+                (preflight, "CLAUDE_DIR", tmp_path),
+                (install_plan, "REPO_ROOT", tmp_path),
+                (install_plan, "SKILLS_DIR", skills_target),
+                (install, "LOCAL_CONFIG_FILE", local_config_file),
+            ],
         )
         stack.enter_context(
             patch.object(
                 install_plan, "load_sandbox_config", return_value=expected_sandbox
             )
-        )
-        stack.enter_context(patch.object(settings, "REPO_ROOT", tmp_path))
-        stack.enter_context(patch.object(settings, "SKILLS_DIR", skills_target))
-        stack.enter_context(
-            patch.object(local_config, "LOCAL_CONFIG_FILE", local_config_file)
-        )
-        stack.enter_context(patch.object(symlinks, "REPO_ROOT", tmp_path))
-        stack.enter_context(patch.object(symlinks, "RULES_DIR", rules_target))
-        stack.enter_context(patch.object(skills, "REPO_ROOT", tmp_path))
-        stack.enter_context(patch.object(skills, "SKILLS_DIR", skills_target))
-        stack.enter_context(patch.object(preflight, "RULES_DIR", rules_target))
-        stack.enter_context(patch.object(preflight, "SKILLS_DIR", skills_target))
-        stack.enter_context(patch.object(preflight, "SETTINGS_FILE", settings_file))
-        stack.enter_context(patch.object(preflight, "CLAUDE_DIR", tmp_path))
-        stack.enter_context(patch.object(install_plan, "REPO_ROOT", tmp_path))
-        stack.enter_context(patch.object(install_plan, "SKILLS_DIR", skills_target))
-        stack.enter_context(
-            patch.object(install, "LOCAL_CONFIG_FILE", local_config_file)
         )
         stack.enter_context(
             patch(

@@ -21,6 +21,7 @@ from .settings import (
     load_permissions_deny,
     load_sandbox_config,
     load_settings,
+    load_static_settings,
     settings_diff,
 )
 from .skills import compute_skill_ops, print_skill_ops
@@ -73,12 +74,13 @@ def plan_changes(search_root=None):
     )
     managed_deny = load_permissions_deny()
     sandbox_config = load_sandbox_config(repo_paths=new_repo_paths)
+    overrides = {**load_static_settings(), "sandbox": sandbox_config}
     new_settings = compute_new_settings(
         current_settings,
         hooks_config,
         repo_paths=new_repo_paths,
         managed={"allow": managed_allow, "deny": managed_deny},
-        sandbox=sandbox_config,
+        overrides=overrides,
     )
     return Plan(
         local_config_diff=local_config_diff,

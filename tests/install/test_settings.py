@@ -414,7 +414,9 @@ def test_new_settings_adds_sandbox(tmp_path):
     with patch.object(settings, "SETTINGS_FILE", settings_file):
         old = settings.load_settings()
     sandbox = {"enabled": True, "excludedCommands": ["docker"]}
-    new = settings.compute_new_settings(old, {}, repo_paths=[], sandbox=sandbox)
+    new = settings.compute_new_settings(
+        old, {}, repo_paths=[], overrides={"sandbox": sandbox}
+    )
     assert new["sandbox"] == sandbox
 
 
@@ -424,3 +426,47 @@ def test_new_settings_no_sandbox_by_default(tmp_path):
         old = settings.load_settings()
     new = settings.compute_new_settings(old, {}, repo_paths=[])
     assert "sandbox" not in new
+
+
+def test_load_static_settings_returns_configured_keys(tmp_path):
+    cfg = tmp_path / "settings-config.json"
+    _write_json(cfg, {"attribution": {"commit": "", "pr": "", "sessionUrl": False}})
+    with patch.object(settings, "SETTINGS_CONFIG_FILE", cfg):
+        result = settings.load_static_settings()
+    assert result == {"attribution": {"commit": "", "pr": "", "sessionUrl": False}}
+
+
+def test_load_static_settings_missing_returns_empty(tmp_path):
+    with patch.object(settings, "SETTINGS_CONFIG_FILE", tmp_path / "missing.json"):
+        assert settings.load_static_settings() == {}
+
+
+def test_new_settings_applies_static_keys(tmp_path):
+    settings_file = _make_settings(tmp_path)
+    with patch.object(settings, "SETTINGS_FILE", settings_file):
+        old = settings.load_settings()
+
+    static = {"attribution": {"commit": "", "pr": "", "sessionUrl": False}}
+    new = settings.compute_new_settings(old, {}, repo_paths=[], overrides=static)
+
+    assert new["attribution"] == static["attribution"]
+    assert new["model"] == "opusplan"
+
+
+def test_new_settings_no_static_keys_by_default(tmp_path):
+    settings_file = _make_settings(tmp_path)
+    with patch.object(settings, "SETTINGS_FILE", settings_file):
+        old = settings.load_settings()
+    new = settings.compute_new_settings(old, {}, repo_paths=[])
+    assert "attribution" not in new
+
+
+def test_new_settings_static_overrides_existing_key(tmp_path):
+    settings_file = _make_settings(tmp_path, extra={"attribution": {"commit": "old"}})
+    with patch.object(settings, "SETTINGS_FILE", settings_file):
+        old = settings.load_settings()
+
+    static = {"attribution": {"commit": "", "pr": "", "sessionUrl": False}}
+    new = settings.compute_new_settings(old, {}, repo_paths=[], overrides=static)
+
+    assert new["attribution"] == static["attribution"]
