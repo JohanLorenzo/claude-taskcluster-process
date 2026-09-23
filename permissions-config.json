@@ -1,7 +1,9 @@
 {
   "static": [
     "Bash(GIT_SEQUENCE_EDITOR=true git rebase:*)",
-    "Bash(gh api:*)"
+    "Bash(gh api:*)",
+    "mcp__moz__get_bugzilla_bug",
+    "mcp__moz__get_phabricator_revision"
   ],
   "deny": [
     "Edit(~/.config/taskcluster.yml)",
