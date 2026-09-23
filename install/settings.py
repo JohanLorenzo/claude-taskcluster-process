@@ -87,6 +87,14 @@ def load_permissions_config(repo_paths=None, taskgraph_repo=None):
     return rules
 
 
+def load_permissions_deny():
+    if not PERMISSIONS_CONFIG_FILE.exists():
+        return []
+    with PERMISSIONS_CONFIG_FILE.open() as f:
+        config = json.load(f)
+    return list(config.get("deny", []))
+
+
 def load_sandbox_config(repo_paths=None):
     if not SANDBOX_CONFIG_FILE.exists():
         return None
@@ -98,17 +106,22 @@ def load_sandbox_config(repo_paths=None):
     return sandbox
 
 
+def _merge_rules(perms, key, rules):
+    existing = set(perms.get(key, []))
+    perms[key] = sorted(existing | set(rules))
+
+
 def compute_new_settings(
-    old_settings, hooks_config, repo_paths, managed_allow=None, sandbox=None
+    old_settings, hooks_config, repo_paths, managed=None, sandbox=None
 ):
     new_settings = copy.deepcopy(old_settings)
     new_settings["hooks"] = hooks_config
     perms = new_settings.setdefault("permissions", {})
     if repo_paths:
         perms["additionalDirectories"] = repo_paths
-    if managed_allow:
-        existing = set(perms.get("allow", []))
-        perms["allow"] = sorted(existing | set(managed_allow))
+    for key, rules in (managed or {}).items():
+        if rules:
+            _merge_rules(perms, key, rules)
     if sandbox is not None:
         new_settings["sandbox"] = sandbox
     return new_settings

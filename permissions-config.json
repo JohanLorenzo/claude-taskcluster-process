@@ -3,6 +3,10 @@
     "Bash(GIT_SEQUENCE_EDITOR=true git rebase:*)",
     "Bash(gh api:*)"
   ],
+  "deny": [
+    "Edit(~/.config/taskcluster.yml)",
+    "Read(~/.config/taskcluster.yml)"
+  ],
   "taskcluster_instances": [
     "https://firefox-ci-tc.services.mozilla.com",
     "https://stage.taskcluster.nonprod.webservices.mozgcp.net"

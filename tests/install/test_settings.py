@@ -205,6 +205,26 @@ def test_load_permissions_config_missing_returns_empty(tmp_path):
         assert settings.load_permissions_config() == []
 
 
+def test_load_permissions_deny_returns_configured_rules(tmp_path):
+    cfg = tmp_path / "permissions-config.json"
+    cfg.write_text('{"deny": ["Read(~/.config/taskcluster.yml)"]}')
+    with patch.object(settings, "PERMISSIONS_CONFIG_FILE", cfg):
+        result = settings.load_permissions_deny()
+    assert result == ["Read(~/.config/taskcluster.yml)"]
+
+
+def test_load_permissions_deny_missing_returns_empty(tmp_path):
+    with patch.object(settings, "PERMISSIONS_CONFIG_FILE", tmp_path / "missing.json"):
+        assert settings.load_permissions_deny() == []
+
+
+def test_load_permissions_deny_absent_key_returns_empty(tmp_path):
+    cfg = tmp_path / "permissions-config.json"
+    cfg.write_text("{}")
+    with patch.object(settings, "PERMISSIONS_CONFIG_FILE", cfg):
+        assert settings.load_permissions_deny() == []
+
+
 def test_new_settings_adds_managed_allow_rules(tmp_path):
     settings_file = _make_settings(
         tmp_path,
@@ -219,7 +239,9 @@ def test_new_settings_adds_managed_allow_rules(tmp_path):
         old = settings.load_settings()
 
     managed = ["Bash(taskcluster task status:*)", "Bash(git diff:*)"]
-    new = settings.compute_new_settings(old, {}, repo_paths=[], managed_allow=managed)
+    new = settings.compute_new_settings(
+        old, {}, repo_paths=[], managed={"allow": managed}
+    )
 
     assert new["permissions"]["allow"] == [
         "Bash(git diff:*)",
@@ -243,7 +265,9 @@ def test_new_settings_managed_allow_deduplicates(tmp_path):
         old = settings.load_settings()
 
     managed = ["Bash(taskcluster task status:*)"]
-    new = settings.compute_new_settings(old, {}, repo_paths=[], managed_allow=managed)
+    new = settings.compute_new_settings(
+        old, {}, repo_paths=[], managed={"allow": managed}
+    )
 
     assert new["permissions"]["allow"] == [
         "Bash(git log:*)",
@@ -262,6 +286,71 @@ def test_new_settings_managed_allow_empty_by_default(tmp_path):
     new = settings.compute_new_settings(old, {}, repo_paths=[])
 
     assert new["permissions"]["allow"] == ["Bash(git log:*)"]
+
+
+def test_new_settings_adds_managed_deny_rules(tmp_path):
+    settings_file = _make_settings(
+        tmp_path,
+        extra={
+            "permissions": {
+                "allow": [],
+                "deny": ["Bash(timeout:*)"],
+                "defaultMode": "plan",
+            }
+        },
+    )
+    with patch.object(settings, "SETTINGS_FILE", settings_file):
+        old = settings.load_settings()
+
+    managed_deny = [
+        "Read(~/.config/taskcluster.yml)",
+        "Edit(~/.config/taskcluster.yml)",
+    ]
+    new = settings.compute_new_settings(
+        old, {}, repo_paths=[], managed={"deny": managed_deny}
+    )
+
+    assert new["permissions"]["deny"] == sorted({"Bash(timeout:*)", *managed_deny})
+
+
+def test_new_settings_managed_deny_deduplicates(tmp_path):
+    settings_file = _make_settings(
+        tmp_path,
+        extra={
+            "permissions": {
+                "allow": [],
+                "deny": ["Read(~/.config/taskcluster.yml)"],
+                "defaultMode": "plan",
+            }
+        },
+    )
+    with patch.object(settings, "SETTINGS_FILE", settings_file):
+        old = settings.load_settings()
+
+    new = settings.compute_new_settings(
+        old, {}, repo_paths=[], managed={"deny": ["Read(~/.config/taskcluster.yml)"]}
+    )
+
+    assert new["permissions"]["deny"] == ["Read(~/.config/taskcluster.yml)"]
+
+
+def test_new_settings_managed_deny_empty_by_default(tmp_path):
+    settings_file = _make_settings(
+        tmp_path,
+        extra={
+            "permissions": {
+                "allow": [],
+                "deny": ["Bash(timeout:*)"],
+                "defaultMode": "plan",
+            }
+        },
+    )
+    with patch.object(settings, "SETTINGS_FILE", settings_file):
+        old = settings.load_settings()
+
+    new = settings.compute_new_settings(old, {}, repo_paths=[])
+
+    assert new["permissions"]["deny"] == ["Bash(timeout:*)"]
 
 
 def test_settings_diff_shows_unified_diff(tmp_path):

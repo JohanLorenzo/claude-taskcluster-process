@@ -24,6 +24,9 @@
         "~/.config/taskcluster.yml"
       ]
     },
+    "credentials": {
+      "files": [{"path": "~/.config/taskcluster.yml", "mode": "deny"}]
+    },
     "network": {
       "allowLocalBinding": true,
       "allowedDomains": [
