@@ -38,7 +38,9 @@
         "crates.io",
         "index.crates.io",
         "static.crates.io",
-        "mozilla-hub.atlassian.net"
+        "mozilla-hub.atlassian.net",
+        "api.lando.services.mozilla.com",
+        "code.claude.com"
       ]
     }
   }
