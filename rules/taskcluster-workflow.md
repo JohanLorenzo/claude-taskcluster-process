@@ -318,6 +318,13 @@ When adding a new scope format that replaces an old one:
 - scriptworker-scripts uses per-script deployment branches: `dev-{name}` for staging,
   `production-{name}` for production. PRs target the main branch (`master`), not these
   deployment branches.
+- **Staging deployment does not require PR review.** Push directly to `dev-{name}`
+  to deploy to staging for testing:
+  ```bash
+  git push upstream HEAD:dev-{name} --force-with-lease
+  ```
+  This is intentional — the point of staging is to test the change before review,
+  not after. The PR review happens after staging verification.
 
 ## Reference: Firefox release task testing
 
