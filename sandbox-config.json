@@ -1,6 +1,7 @@
 {
   "sandbox": {
     "enabled": true,
+    "failIfUnavailable": true,
     "excludedCommands": [
       "docker *",
       "gh *",
