@@ -1,7 +1,17 @@
 {
   "sandbox": {
     "enabled": true,
-    "excludedCommands": ["docker *", "gh *", "git push*", "taskcluster *"],
+    "excludedCommands": [
+      "docker *",
+      "gh *",
+      "git fetch*",
+      "git pull*",
+      "git push*",
+      "pre-commit run *",
+      "stmo-cli *",
+      "*/stmo-cli *",
+      "taskcluster *"
+    ],
     "filesystem": {
       "allowWrite": ["~/.cache", "~/.mozbuild"],
       "denyWrite": [
