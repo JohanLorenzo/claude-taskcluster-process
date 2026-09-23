@@ -3,5 +3,19 @@
     "commit": "",
     "pr": "",
     "sessionUrl": false
-  }
+  },
+  "footerLinksRegexes": [
+    {
+      "type": "regex",
+      "pattern": "\\b[Bb]ug (?<id>\\d{6,8})\\b",
+      "url": "https://bugzilla.mozilla.org/show_bug.cgi?id={id}",
+      "label": "Bug {id}"
+    },
+    {
+      "type": "regex",
+      "pattern": "\\b(?<rev>D\\d{5,7})\\b",
+      "url": "https://phabricator.services.mozilla.com/{rev}",
+      "label": "{rev}"
+    }
+  ]
 }
