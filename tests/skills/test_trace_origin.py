@@ -88,3 +88,25 @@ def test_traces_line_after_lines_inserted_above(tmp_path):
     assert "Found meaningful change" in result.stderr
     assert "Reached maximum trace depth" not in result.stderr
     assert target_sha in result.stdout
+
+
+def test_traces_line_with_long_follow_history_avoids_sigpipe(tmp_path):
+    repo = tmp_path
+    _git(repo, "init")
+    (repo / "mod.py").write_text("line0\n")
+    _git(repo, "add", "mod.py")
+    _git(repo, "commit", "-m", "initial")
+
+    num_appends = 12
+    target_sha = None
+    for i in range(1, num_appends + 1):
+        with (repo / "mod.py").open("a") as f:
+            f.write(f"line{i}\n")
+        _git(repo, "add", "mod.py")
+        _git(repo, "commit", "-m", f"append line {i}")
+        target_sha = _git(repo, "rev-parse", "HEAD").stdout.strip()
+
+    result = _trace(repo, f"mod.py:{num_appends + 1}")
+    assert result.returncode == 0
+    assert "=== BLAME CHAIN ===" in result.stdout
+    assert target_sha in result.stdout

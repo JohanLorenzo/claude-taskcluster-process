@@ -177,7 +177,7 @@ git log -1 --format="Commit:  %H%nAuthor:  %an <%ae>%nDate:    %ad%nSubject: %s%
 
 echo
 echo "=== FILE HISTORY ==="
-git log --follow --format="%h %ad %s" --date=short "$ORIGINAL_COMMIT" -- "$FILE" | head -10
+git log --follow -n 10 --format="%h %ad %s" --date=short "$ORIGINAL_COMMIT" -- "$FILE"
 
 echo
 echo "=== BLAME CHAIN ==="
