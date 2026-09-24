@@ -167,6 +167,15 @@ def parse_local_config_content(text):
     }
 
 
+def parse_tracked_repos(text):
+    return {
+        name.strip(): Path(path.strip())
+        for name, path in re.findall(
+            r"^\s*-\s*name:\s*(.+)\n\s*path:\s*(.+)$", text, re.MULTILINE
+        )
+    }
+
+
 def render_local_config(
     taskgraph_repo, mozilla_taskgraph_repo, fxci_config_repo, taskcluster_repo, repos
 ):

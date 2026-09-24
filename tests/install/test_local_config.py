@@ -62,6 +62,25 @@ def test_parse_local_config_content_no_fxci_config():
     assert result["fxci_config_repo"] is None
 
 
+def test_parse_tracked_repos_maps_name_to_path():
+    result = local_config.parse_tracked_repos(_LOCAL_CONFIG_CONTENT)
+    assert result == {
+        "taskcluster/taskgraph": Path("/tg/taskcluster/taskgraph"),
+        "mozilla-releng/fxci-config": Path("/tg/mozilla-releng/fxci-config"),
+    }
+
+
+def test_parse_tracked_repos_empty_string_returns_empty_dict():
+    assert local_config.parse_tracked_repos("") == {}
+
+
+def test_parse_tracked_repos_no_repos_section_returns_empty_dict():
+    assert (
+        local_config.parse_tracked_repos("taskgraph_repo: /tg/taskcluster/taskgraph\n")
+        == {}
+    )
+
+
 def test_parse_local_config_content_parses_text_directly():
     result = local_config.parse_local_config_content(
         "taskgraph_repo: /tg\n"

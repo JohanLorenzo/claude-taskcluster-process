@@ -1,7 +1,7 @@
 import os
 
 from .constants import CLAUDE_DIR, REPO_ROOT, RULES_DIR, SETTINGS_FILE, SKILLS_DIR
-from .skills import replace_dir_warnings, stale_skill_warnings
+from .skills import external_skill_warnings, replace_dir_warnings, stale_skill_warnings
 from .symlinks import replace_file_warnings, stale_symlink_warnings
 
 
@@ -23,6 +23,7 @@ def check_preflight_warnings(symlink_ops, skill_ops=None):
     warnings = [
         *replace_file_warnings(symlink_ops),
         *replace_dir_warnings(skill_ops),
+        *external_skill_warnings(),
         *old_shell_hook_warnings(),
         *stale_symlink_warnings(),
         *stale_skill_warnings(),
