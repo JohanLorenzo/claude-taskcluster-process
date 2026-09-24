@@ -1,7 +1,5 @@
 import json
 import logging
-import shutil
-import subprocess
 import sys
 from dataclasses import dataclass, field
 
@@ -27,8 +25,6 @@ from .settings import (
 from .skills import compute_skill_ops, print_skill_ops
 from .symlinks import compute_symlink_ops, print_symlink_ops
 from .utils import format_diff
-
-GIT = shutil.which("git") or "git"
 
 logger = logging.getLogger(__name__)
 
@@ -156,12 +152,3 @@ def apply_changes(plan):
     _apply_symlinks(plan.actionable_ops)
     _apply_skills(plan.actionable_skill_ops)
     logger.info("\nDone.")
-    if (
-        subprocess.run(  # noqa: S603
-            [GIT, "remote", "get-url", "origin"], capture_output=True, check=False
-        ).returncode
-        == 0
-    ):
-        logger.info(
-            "Note: old ~/.claude/hooks/*.sh scripts can be removed if no longer needed."
-        )
