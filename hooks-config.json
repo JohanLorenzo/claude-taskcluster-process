@@ -18,6 +18,12 @@
         {"type": "command", "command": "hooks/block_gh_pr_comment.py"},
         {"type": "command", "command": "hooks/block_tc_token_inline.py"}
       ]
+    },
+    {
+      "matcher": "Bash|Edit|Write|NotebookEdit|Agent",
+      "hooks": [
+        {"type": "command", "command": "hooks/enforce_orchestrator.py"}
+      ]
     }
   ],
   "PostToolUse": [
