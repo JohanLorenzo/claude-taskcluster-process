@@ -24,6 +24,19 @@
       "hooks": [
         {"type": "command", "command": "hooks/enforce_orchestrator.py"}
       ]
+    },
+    {
+      "matcher": "Skill",
+      "hooks": [
+        {"type": "command", "command": "hooks/route_skills_to_subagents.py"}
+      ]
+    }
+  ],
+  "UserPromptExpansion": [
+    {
+      "hooks": [
+        {"type": "command", "command": "hooks/route_skills_to_subagents.py"}
+      ]
     }
   ],
   "PostToolUse": [
