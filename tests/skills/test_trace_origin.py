@@ -65,3 +65,26 @@ def test_traces_plain_line(tmp_path):
     assert "Found meaningful change" in result.stderr
     assert "Reached maximum trace depth" not in result.stderr
     assert sha in result.stdout
+
+
+def test_traces_line_after_lines_inserted_above(tmp_path):
+    repo = tmp_path
+    _git(repo, "init")
+    (repo / "mod.py").write_text("a = 1\nb = 2\n")
+    _git(repo, "add", "mod.py")
+    _git(repo, "commit", "-m", "initial")
+
+    (repo / "mod.py").write_text("a = 1\nvalue = 3\nb = 2\n")
+    _git(repo, "add", "mod.py")
+    _git(repo, "commit", "-m", "add line")
+    target_sha = _git(repo, "rev-parse", "HEAD").stdout.strip()
+
+    (repo / "mod.py").write_text("z = 0\na = 1\nvalue = 3\nb = 2\n")
+    _git(repo, "add", "mod.py")
+    _git(repo, "commit", "-m", "prepend line")
+
+    result = _trace(repo, "mod.py:3")
+    assert result.returncode == 0
+    assert "Found meaningful change" in result.stderr
+    assert "Reached maximum trace depth" not in result.stderr
+    assert target_sha in result.stdout

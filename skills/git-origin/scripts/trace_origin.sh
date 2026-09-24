@@ -80,7 +80,7 @@ trace_line() {
         return 1
     }
 
-    echo "$commit"
+    echo "$blame_output"
 }
 
 is_meaningful_change() {
@@ -124,9 +124,13 @@ MAX_ITERATIONS=50
 iteration=0
 
 while [[ $iteration -lt $MAX_ITERATIONS ]]; do
-    commit=$(trace_line "$CURRENT_FILE" "$CURRENT_LINE" "false")
+    blame_output=$(trace_line "$CURRENT_FILE" "$CURRENT_LINE" "false")
 
-    [[ -z "$commit" ]] && break
+    [[ -z "$blame_output" ]] && break
+
+    commit=$(head -1 <<< "$blame_output" | awk '{print $1}')
+    blamed_file=$(sed -n 's/^filename //p' <<< "$blame_output")
+    line_content=$(awk '/^\t/ {print substr($0, 2)}' <<< "$blame_output")
 
     HISTORY+=("$commit")
 
@@ -138,9 +142,7 @@ while [[ $iteration -lt $MAX_ITERATIONS ]]; do
         break
     fi
 
-    line_content=$(git show "$commit:$CURRENT_FILE" 2>/dev/null | sed -n "${CURRENT_LINE}p" || echo "")
-
-    if is_meaningful_change "$commit" "$CURRENT_FILE" "$line_content"; then
+    if is_meaningful_change "$commit" "$blamed_file" "$line_content"; then
         ORIGINAL_COMMIT="$commit"
         echo "Found meaningful change, stopping trace" >&2
         break
