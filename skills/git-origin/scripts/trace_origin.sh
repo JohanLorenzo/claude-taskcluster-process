@@ -29,7 +29,7 @@ if [[ "$INPUT" =~ ^(.+):([0-9]+)$ ]]; then
     LINE="${BASH_REMATCH[2]}"
 elif [[ -n "$SEARCH_STRING" ]]; then
     FILE="$INPUT"
-    LINE=$(grep -n -F "$SEARCH_STRING" "$FILE" | head -1 | cut -d: -f1)
+    LINE=$(grep -n -m 1 -F -- "$SEARCH_STRING" "$FILE" | cut -d: -f1 || true)
     [[ -z "$LINE" ]] && error "Search string not found: $SEARCH_STRING"
     echo "Found at line $LINE" >&2
 else

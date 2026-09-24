@@ -37,9 +37,9 @@ def _make_repo(tmp_path, added_line):
     return repo, sha
 
 
-def _trace(repo, spec):
+def _trace(repo, *args):
     return subprocess.run(  # noqa: S603
-        ["bash", str(_SCRIPT), spec],  # noqa: S607
+        ["bash", str(_SCRIPT), *args],  # noqa: S607
         cwd=repo,
         capture_output=True,
         text=True,
@@ -110,3 +110,28 @@ def test_traces_line_with_long_follow_history_avoids_sigpipe(tmp_path):
     assert result.returncode == 0
     assert "=== BLAME CHAIN ===" in result.stdout
     assert target_sha in result.stdout
+
+
+def test_search_string_with_many_matches(tmp_path):
+    repo = tmp_path
+    _git(repo, "init")
+    lines = "\n".join(f"needle = {i}" for i in range(100000)) + "\n"
+    (repo / "mod.py").write_text(lines)
+    _git(repo, "add", "mod.py")
+    _git(repo, "commit", "-m", "initial")
+
+    result = _trace(repo, "mod.py", "needle")
+    assert result.returncode == 0
+    assert "Found at line 1" in result.stderr
+
+
+def test_search_string_not_found(tmp_path):
+    repo = tmp_path
+    _git(repo, "init")
+    (repo / "mod.py").write_text("a = 1\n")
+    _git(repo, "add", "mod.py")
+    _git(repo, "commit", "-m", "initial")
+
+    result = _trace(repo, "mod.py", "missing")
+    assert result.returncode == 1
+    assert "Search string not found: missing" in result.stderr
