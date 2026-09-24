@@ -96,7 +96,7 @@ is_meaningful_change() {
     local diff_output
     diff_output=$(git diff -w -U0 "$parent" "$commit" -- "$file" 2>/dev/null || echo "")
 
-    if [[ "$diff_output" =~ $line_content ]]; then
+    if grep -qF -- "$line_content" <<< "$diff_output"; then
         return 0
     fi
 
