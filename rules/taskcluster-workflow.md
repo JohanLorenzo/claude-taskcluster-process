@@ -153,7 +153,7 @@ DECISION_TASK_ID=$(gh api "repos/<org/repo>/commits/$HEAD_SHA/check-runs" \
   --jq '[.check_runs[] | select(.name | contains("Decision Task"))][0].external_id')
 ```
 
-**Monitoring protocol**: use the skill (single approval, blocks until done):
+**Monitoring protocol**: use the skill (blocks until done):
 ```
 /taskcluster-monitor-group <TC_ROOT_URL> <DECISION_TASK_ID>
 ```
