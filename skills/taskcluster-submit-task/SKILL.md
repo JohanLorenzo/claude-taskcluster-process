@@ -8,6 +8,8 @@ description: >-
   normal PR pushes.
 allowed-tools: Bash
 argument-hint: "<TC_ROOT_URL> (--task-id <TASK_ID> | taskgraph-label)"
+context: fork
+agent: general-purpose
 ---
 
 # Submit Taskcluster Task (Direct Submission)

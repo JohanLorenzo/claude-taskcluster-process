@@ -1,6 +1,8 @@
 ---
 name: Git Origin Tracer
 description: Trace any line of code back to its original introduction, following moves, renames, and copies, then extract the bug number
+context: fork
+agent: general-purpose
 ---
 
 # Git Origin Tracer Skill

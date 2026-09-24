@@ -8,6 +8,8 @@ description: >-
   checks — only when waiting for an entire group to finish.
 allowed-tools: Bash
 argument-hint: "<TC_ROOT_URL> <DECISION_TASK_ID>"
+context: fork
+agent: general-purpose
 ---
 
 # Monitor Taskcluster Group

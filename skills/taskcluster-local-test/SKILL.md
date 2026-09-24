@@ -7,6 +7,8 @@ description: >-
   requiring TC proxy or secrets; use /taskcluster-submit-task instead.
 allowed-tools: Bash
 argument-hint: "<TC_ROOT_URL> <task-label> --params <params-file>"
+context: fork
+agent: general-purpose
 ---
 
 # Local Task Test

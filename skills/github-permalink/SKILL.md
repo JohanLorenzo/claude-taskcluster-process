@@ -1,6 +1,8 @@
 ---
 name: Convert Github Permalink
 description: Convert local file references to GitHub permalinks using main/master branch SHA
+context: fork
+agent: general-purpose
 ---
 
 # Convert Github Permalink Skill
