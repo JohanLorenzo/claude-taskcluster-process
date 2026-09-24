@@ -121,83 +121,12 @@ def test_new_settings_preserves_other_permissions_keys(tmp_path):
     assert new["permissions"]["additionalDirectories"] == ["/p"]
 
 
-def test_load_permissions_config_generates_patterns(tmp_path):
+def test_load_permissions_config_returns_static_rules(tmp_path):
     cfg = tmp_path / "permissions-config.json"
-    cfg.write_text(
-        '{"static": ["Bash(git rebase:*)"], "taskcluster_instances": ["https://tc.example.com"]}'
-    )
+    cfg.write_text('{"static": ["Bash(git rebase:*)", "mcp__moz__get_bugzilla_bug"]}')
     with patch.object(settings, "PERMISSIONS_CONFIG_FILE", cfg):
         result = settings.load_permissions_config()
-    assert "Bash(git rebase:*)" in result
-    for cmd in (
-        "taskcluster task status",
-        "taskcluster task log",
-        "taskcluster task def",
-        "taskcluster group status",
-        "taskcluster group list",
-    ):
-        assert f"Bash(TASKCLUSTER_ROOT_URL=https://tc.example.com {cmd}:*)" in result
-    for cmd in ("taskcluster task status", "taskcluster group status"):
-        assert (
-            f"Bash(until TASKCLUSTER_ROOT_URL=https://tc.example.com {cmd}:*)" in result
-        )
-
-
-def test_load_permissions_config_generates_uv_taskgraph_rules(tmp_path):
-    cfg = tmp_path / "permissions-config.json"
-    cfg.write_text('{"uv_taskgraph_extras": ["", "load-image"]}')
-    with patch.object(settings, "PERMISSIONS_CONFIG_FILE", cfg):
-        result = settings.load_permissions_config(taskgraph_repo="/path/to/taskgraph")
-    assert "Bash(uv run --with-editable '/path/to/taskgraph' taskgraph:*)" in result
-    assert (
-        "Bash(uv run --with-editable '/path/to/taskgraph[load-image]' taskgraph:*)"
-        in result
-    )
-
-
-def test_load_permissions_config_no_uv_rules_without_taskgraph_repo(tmp_path):
-    cfg = tmp_path / "permissions-config.json"
-    cfg.write_text('{"uv_taskgraph_extras": ["", "load-image"]}')
-    with patch.object(settings, "PERMISSIONS_CONFIG_FILE", cfg):
-        result = settings.load_permissions_config()
-    assert not any("uv run --with-editable" in r for r in result)
-
-
-def test_load_permissions_config_generates_skill_script_rules(tmp_path):
-    cfg = tmp_path / "permissions-config.json"
-    cfg.write_text("{}")
-    fake_skills_dir = tmp_path / "skills"
-    with (
-        patch.object(settings, "PERMISSIONS_CONFIG_FILE", cfg),
-        patch.object(settings, "SKILLS_DIR", fake_skills_dir),
-    ):
-        result = settings.load_permissions_config()
-    for skill, script in [
-        ("taskcluster-monitor-group", "taskcluster_monitor_group.py"),
-        ("taskcluster-submit-task", "taskcluster_submit_task.py"),
-        ("taskcluster-local-test", "taskcluster_local_test.py"),
-    ]:
-        expected = f"Bash(uv run {fake_skills_dir}/{skill}/scripts/{script}:*)"
-        assert expected in result
-
-
-def test_load_permissions_config_generates_git_c_rules(tmp_path):
-    cfg = tmp_path / "permissions-config.json"
-    cfg.write_text('{"git_c_operations": ["add", "commit"]}')
-    with patch.object(settings, "PERMISSIONS_CONFIG_FILE", cfg):
-        result = settings.load_permissions_config(repo_paths=["/a/repo", "/b/repo"])
-    assert "Bash(git -C /a/repo add:*)" in result
-    assert "Bash(git -C /a/repo commit:*)" in result
-    assert "Bash(git -C /b/repo add:*)" in result
-    assert "Bash(git -C /b/repo commit:*)" in result
-
-
-def test_load_permissions_config_no_git_c_without_repos(tmp_path):
-    cfg = tmp_path / "permissions-config.json"
-    cfg.write_text('{"git_c_operations": ["add", "commit"]}')
-    with patch.object(settings, "PERMISSIONS_CONFIG_FILE", cfg):
-        result = settings.load_permissions_config()
-    assert not any("git -C" in r for r in result)
+    assert result == ["Bash(git rebase:*)", "mcp__moz__get_bugzilla_bug"]
 
 
 def test_load_permissions_config_missing_returns_empty(tmp_path):

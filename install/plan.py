@@ -69,10 +69,7 @@ def plan_changes(search_root=None):
         search_root=search_root
     )
     new_repo_paths = [str(REPO_ROOT)] + [r["path"] for r in new_repos]
-    taskgraph_repo = new_repos[0]["path"] if new_repos else None
-    managed_allow = load_permissions_config(
-        repo_paths=new_repo_paths, taskgraph_repo=taskgraph_repo
-    )
+    managed_allow = load_permissions_config()
     managed_deny = load_permissions_deny()
     sandbox_config = load_sandbox_config(repo_paths=new_repo_paths)
     overrides = {**load_static_settings(), "sandbox": sandbox_config}

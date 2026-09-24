@@ -348,14 +348,6 @@ def test_main_exits_without_prompt_when_no_changes(tmp_path, caplog):
     worktree_rules = sorted(
         f"Bash(git -C {p}/.claude/worktrees/:*)" for p in repo_paths
     )
-    skill_rules = [
-        f"Bash(uv run {skills_target}/taskcluster-monitor-group"
-        f"/scripts/taskcluster_monitor_group.py:*)",
-        f"Bash(uv run {skills_target}/taskcluster-submit-task"
-        f"/scripts/taskcluster_submit_task.py:*)",
-        f"Bash(uv run {skills_target}/taskcluster-local-test"
-        f"/scripts/taskcluster_local_test.py:*)",
-    ]
     empty_perms = tmp_path / "permissions-config.json"
     empty_perms.write_text("{}")
     empty_settings_config = tmp_path / "settings-config.json"
@@ -374,7 +366,7 @@ def test_main_exits_without_prompt_when_no_changes(tmp_path, caplog):
         extra={
             "hooks": {"PreToolUse": [], "PostToolUse": []},
             "permissions": {
-                "allow": sorted([*worktree_rules, *skill_rules]),
+                "allow": worktree_rules,
                 "defaultMode": "plan",
                 "additionalDirectories": repo_paths,
             },
@@ -391,7 +383,6 @@ def test_main_exits_without_prompt_when_no_changes(tmp_path, caplog):
                 (settings, "PERMISSIONS_CONFIG_FILE", empty_perms),
                 (settings, "SETTINGS_CONFIG_FILE", empty_settings_config),
                 (settings, "REPO_ROOT", tmp_path),
-                (settings, "SKILLS_DIR", skills_target),
                 (local_config, "LOCAL_CONFIG_FILE", local_config_file),
                 (symlinks, "REPO_ROOT", tmp_path),
                 (symlinks, "RULES_DIR", rules_target),

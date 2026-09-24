@@ -10,7 +10,6 @@ from .constants import (
     SANDBOX_CONFIG_FILE,
     SETTINGS_CONFIG_FILE,
     SETTINGS_FILE,
-    SKILLS_DIR,
 )
 from .utils import unified_diff
 
@@ -43,49 +42,12 @@ def load_settings():
         sys.exit(1)
 
 
-_TC_READ_COMMANDS = [
-    "taskcluster task def",
-    "taskcluster task log",
-    "taskcluster task status",
-    "taskcluster group list",
-    "taskcluster group status",
-]
-_TC_POLL_COMMANDS = [
-    "taskcluster task status",
-    "taskcluster group status",
-]
-
-
-def load_permissions_config(repo_paths=None, taskgraph_repo=None):
+def load_permissions_config():
     if not PERMISSIONS_CONFIG_FILE.exists():
         return []
     with PERMISSIONS_CONFIG_FILE.open() as f:
         config = json.load(f)
-    rules = list(config.get("static", []))
-    for url in config.get("taskcluster_instances", []):
-        rules.extend(
-            f"Bash(TASKCLUSTER_ROOT_URL={url} {cmd}:*)" for cmd in _TC_READ_COMMANDS
-        )
-        rules.extend(
-            f"Bash(until TASKCLUSTER_ROOT_URL={url} {cmd}:*)"
-            for cmd in _TC_POLL_COMMANDS
-        )
-    for skill_name, script_name in [
-        ("taskcluster-monitor-group", "taskcluster_monitor_group.py"),
-        ("taskcluster-submit-task", "taskcluster_submit_task.py"),
-        ("taskcluster-local-test", "taskcluster_local_test.py"),
-    ]:
-        rules.append(f"Bash(uv run {SKILLS_DIR}/{skill_name}/scripts/{script_name}:*)")
-    git_ops = config.get("git_c_operations", [])
-    for path in repo_paths or []:
-        rules.extend(f"Bash(git -C {path} {op}:*)" for op in git_ops)
-    if taskgraph_repo:
-        for extra in config.get("uv_taskgraph_extras", []):
-            suffix = f"[{extra}]" if extra else ""
-            rules.append(
-                f"Bash(uv run --with-editable '{taskgraph_repo}{suffix}' taskgraph:*)"
-            )
-    return rules
+    return list(config.get("static", []))
 
 
 def load_permissions_deny():
