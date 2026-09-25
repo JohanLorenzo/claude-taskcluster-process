@@ -5,6 +5,14 @@
   ],
   "deny": [
     "Edit(~/.config/taskcluster.yml)",
-    "Read(~/.config/taskcluster.yml)"
+    "Read(~/.config/taskcluster.yml)",
+    "Edit(~/.gnupg/**)",
+    "Read(~/.gnupg/**)",
+    "Edit(~/.config/gcloud/**)",
+    "Read(~/.config/gcloud/**)",
+    "Edit(~/.config/sops/**)",
+    "Read(~/.config/sops/**)",
+    "Edit(~/Library/Application Support/sops/**)",
+    "Read(~/Library/Application Support/sops/**)"
   ]
 }

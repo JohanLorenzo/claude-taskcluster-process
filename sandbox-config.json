@@ -23,11 +23,21 @@
         "~/.zshrc",
         "~/.profile",
         "~/.bash_profile",
-        "~/.config/taskcluster.yml"
+        "~/.config/taskcluster.yml",
+        "~/.gnupg",
+        "~/.config/gcloud",
+        "~/.config/sops",
+        "~/Library/Application Support/sops"
       ]
     },
     "credentials": {
-      "files": [{"path": "~/.config/taskcluster.yml", "mode": "deny"}]
+      "files": [
+        {"path": "~/.config/taskcluster.yml", "mode": "deny"},
+        {"path": "~/.gnupg", "mode": "deny"},
+        {"path": "~/.config/gcloud", "mode": "deny"},
+        {"path": "~/.config/sops", "mode": "deny"},
+        {"path": "~/Library/Application Support/sops", "mode": "deny"}
+      ]
     },
     "network": {
       "allowLocalBinding": true,
