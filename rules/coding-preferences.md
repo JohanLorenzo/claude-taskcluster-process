@@ -22,23 +22,8 @@
 - Always use `--draft` when creating PRs
 - Reference related GitHub issues or Bugzilla bugs in the PR body
 - When referencing a Bugzilla bug, use a hyperlink: `[Bug NNNNN](https://bugzilla.mozilla.org/show_bug.cgi?id=NNNNN)`
-- Summary section is optional when the PR title already conveys the change
 
-PR body template (use HEREDOC with `gh pr create --body`):
-
-~~~markdown
-## Summary
-
-<1-3 bullet points describing what and why>
-
-## Merge order
-
-<Numbered list of merge sequence across repos. Omit section if single-repo change.>
-
-## Verification
-
-<How the change was tested — task links, log excerpts, local test output.>
-~~~
+Write the body with the `pr-description` skill.
 
 ## Phabricator Revisions
 
@@ -61,14 +46,6 @@ Phabricator web UI. Common choices:
 - `testing-exception-elsewhere` — test coverage lives outside this repo
   (e.g. end-to-end staging verification)
 - `testing-exception-unchanged` — docs-only or config-only, no behavior change
-
-### Direct log links
-
-When linking to CI task logs in test plans or PR descriptions, use `#L<N>` anchors
-to point to the specific line:
-```
-https://firefox-ci-tc.services.mozilla.com/tasks/<id>/runs/0/logs/public/logs/live.log#L276
-```
 
 ## Environment Variables
 

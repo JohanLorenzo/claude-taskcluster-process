@@ -22,6 +22,10 @@ about doing it well, not just avoiding the block.
   apply (`planning-discipline`, `taskcluster-workflow`, etc.).
 - Run independent subagents in parallel — a single message with multiple
   `Agent` calls.
+- When dispatching a subagent that creates or edits a PR or test plan, put the
+  why, the rejected alternatives, the evidence (links, numbers), and, for
+  multi-repo work, the URLs of every PR in the set in its prompt. Tell it to
+  use the `pr-description` skill. If you don't know them, ask the user first.
 
 ## What stays in the main session
 

@@ -39,6 +39,5 @@ unilateral decisions to expand or change scope.
 ## Multi-repository work
 
 When touching multiple repositories:
-- Link PRs in descriptions, indicate dependencies and merge order.
 - Merge in dependency order (upstream first).
 - Create and push the upstream PR before the downstream PR.

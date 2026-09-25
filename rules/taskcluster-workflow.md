@@ -50,7 +50,7 @@ commit the full per-commit gate sequence (Steps 3–8):
 - Step 6: push to PR and the TC_ROOT_URL to monitor against (staging or
   production, per Step 1)
 - Step 7: monitor with /taskcluster-monitor-group
-- Step 8: update PR description with verification
+- Step 8: update the PR's Evidence section via the `pr-description` skill
 
 Do not defer these decisions to implementation time.
 
@@ -160,22 +160,10 @@ DECISION_TASK_ID=$(gh api "repos/<org/repo>/commits/$HEAD_SHA/check-runs" \
 
 ### Step 8: Update PR description with verification
 
-After every push, update the PR description with what was verified for each commit.
-Task links expire quickly, so the PR must capture the relevant log output directly.
-
-Template:
-
-~~~markdown
-## Verification
-
-### `<short-sha>` — `<commit-message>`
-- [<task-name>](<taskcluster-task-url>)
-  ```
-  <relevant extract from task logs showing success or key output>
-  ```
-
-(Repeat for each commit. List all verified tasks per commit.)
-~~~
+After every push, update the Evidence part of the PR description with the
+`pr-description` skill: only the 1-2 tasks that prove the new behaviour, each
+with a link and a 5-line-or-fewer excerpt, inline because task links expire.
+Skip tasks that are just green on the PR's own CI.
 
 ## Reference: Taskcluster CLI credentials
 
