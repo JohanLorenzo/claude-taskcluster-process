@@ -16,6 +16,7 @@
         {"type": "command", "command": "hooks/block_ci_admin_prod.py"},
         {"type": "command", "command": "hooks/block_gh_api_write.py"},
         {"type": "command", "command": "hooks/block_gh_pr_comment.py"},
+        {"type": "command", "command": "hooks/block_gh_pr_close.py"},
         {"type": "command", "command": "hooks/review_pr_description.py"},
         {"type": "command", "command": "hooks/block_tc_token_inline.py"}
       ]
