@@ -3,11 +3,13 @@
     "enabled": true,
     "failIfUnavailable": true,
     "excludedCommands": [
+      "acli *",
       "docker *",
       "gh *",
       "git fetch*",
       "git pull*",
       "git push*",
+      "gws *",
       "pre-commit run *",
       "stmo-cli *",
       "*/stmo-cli *",
