@@ -16,6 +16,10 @@ resumable (clear entry points, saved state).
 
 - One commit per changed kind — start upstream dependencies, work toward leaf kinds.
 - Commit immediately after completing each step — never batch all commits at the end.
+- Run every configured check (tests, linters, formatters) before every commit,
+  formatting-only commits included.
+- The plan names the commit that introduces each dependency file
+  (requirements, lockfiles). It is the commit that first uses the package.
 
 ## Handling CI failures
 
