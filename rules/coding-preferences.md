@@ -6,6 +6,8 @@
 - No docstrings
 
 ## Git Best Practices
+- Before writing a commit message, run `git log --oneline` to match the
+  repo's existing convention. Check the bug number against the plan's scope.
 - Use concise one-liner commit messages
 - Never use `git commit --no-verify` - Fix underlying issues instead of bypassing hooks
 - Plan commits during the planning phase, not as an afterthought - decide upfront what logical units of work warrant separate commits
@@ -22,6 +24,8 @@
 - Always use `--draft` when creating PRs
 - Reference related GitHub issues or Bugzilla bugs in the PR body
 - When referencing a Bugzilla bug, use a hyperlink: `[Bug NNNNN](https://bugzilla.mozilla.org/show_bug.cgi?id=NNNNN)`
+- When splitting or reworking a PR, amend it or reuse its number for one half
+  instead of closing it and opening a new one.
 
 Write the body with the `pr-description` skill.
 
