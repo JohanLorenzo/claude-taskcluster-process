@@ -27,25 +27,7 @@ Write the body with the `pr-description` skill.
 
 ## Phabricator Revisions
 
-### Setting the Test Plan field
-
-Use `--test-plan` with `--single` (required — `--test-plan` does not work on a
-stack range):
-```bash
-moz-phab submit --no-wip --single <commit> --test-plan "..."
-```
-
-`--message` creates a general comment (visible in the activity feed), not the
-Summary field. The Summary is populated from the commit body (lines below the
-subject line).
-
-### Testing Policy tags
-
-Firefox requires a Testing Policy project tag before landing. Set it via the
-Phabricator web UI. Common choices:
-- `testing-exception-elsewhere` — test coverage lives outside this repo
-  (e.g. end-to-end staging verification)
-- `testing-exception-unchanged` — docs-only or config-only, no behavior change
+Use the `moz-phab` skill before `moz-phab submit`.
 
 ## Environment Variables
 
