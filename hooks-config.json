@@ -21,12 +21,6 @@
         {"type": "command", "command": "hooks/block_tc_token_inline.py"},
         {"type": "command", "command": "hooks/block_gpg_signing.py"}
       ]
-    },
-    {
-      "matcher": "Bash|Edit|Write|NotebookEdit|Agent",
-      "hooks": [
-        {"type": "command", "command": "hooks/enforce_orchestrator.py"}
-      ]
     }
   ],
   "PostToolUse": [
